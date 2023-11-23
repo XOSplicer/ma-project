@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}",
+                "/usr/include/llvm-14",
+                "/usr/include/llvm-c-14",
+                "${workspaceFolder}/find_unsafe_rs/include",
+                "${workspaceFolder}/phasar/include",
+                "${workspaceFolder}/phasar/external/json/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang-14",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-clang-x64",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}
