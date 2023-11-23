@@ -1,0 +1,9 @@
+[submodule "phasar"]
+	path = phasar
+	url = git@github.com:secure-software-engineering/phasar.git
+[submodule "find_unsafe_rs"]
+	path = find_unsafe_rs
+	url = git@gitlab.fachschaften.org:fstegmaier/find-unsafe-rs.git
+[submodule "corrosion"]
+	path = corrosion
+	url = https://github.com/corrosion-rs/corrosion.git
