@@ -1,0 +1,21 @@
+[package]
+name = "find-unsafe"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "find_unsafe_rs"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "find-unsafe"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "0.2.150"
+proc-macro2 = { version = "1.0.69", features = ["span-locations"] }
+syn = { version = "2.0.39", features = ["full", "extra-traits", "visit"] }
+thiserror = "1.0.50"

@@ -24,6 +24,6 @@ set(Rust_TOOLCHAIN nightly-2022-05-18)
 
 add_subdirectory(phasar)
 add_subdirectory(corrosion)
-add_subdirectory(find_unsafe_rs)
+add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(analysis-targets)
