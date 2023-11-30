@@ -4,3 +4,5 @@ corrosion_import_crate(
   CRATE_TYPES bin
   PROFILE dev
 )
+
+# NOTE: .ll files are copied on build.sh

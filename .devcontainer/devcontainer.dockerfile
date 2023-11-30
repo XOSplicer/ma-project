@@ -65,7 +65,7 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y && \
 
 ENV PATH=/root/.cargo/bin:$PATH
 
-RUN cargo install cbindgen
+RUN cargo install cbindgen cargo-asm
 
 ENV CC=/usr/bin/clang-14
 ENV CXX=/usr/bin/clang++-14

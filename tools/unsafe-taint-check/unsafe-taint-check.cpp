@@ -53,18 +53,7 @@ int main(int Argc, const char **Argv) {
       }
     }
 
-    if (f_llvm_dbg_declare) {
-      llvm::outs() << "Calls to `llvm.dbg.declare`:\n";
-      for (auto c: HA.getICFG().getCallersOf(f_llvm_dbg_declare)) {
-        llvm::outs() << *c << "\n";
-      }
-    } else {
-      llvm::outs() << "No calls to `llvm.dbg.declare`:\n";
-    }
-
     auto *find_unsafe_rs = find_unsafe_rs_new();
-
-    // llvm::DebugInfoFinder DIFinder;
 
     llvm::outs() << "Unsafe functions:\n";
     for (const llvm::Function *const f : HA.getICFG().getAllFunctions()) {
@@ -75,7 +64,6 @@ int main(int Argc, const char **Argv) {
       if (!sub) {
         continue;
       }
-      // TODO: implement check
 
       auto path = std::filesystem::path(sub->getDirectory().str()) / sub->getFilename().str();
       int is_unsafe = 0;
