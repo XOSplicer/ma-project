@@ -17,14 +17,14 @@
 
 using namespace psr;
 
-int main(int Argc, const char **Argv)
+int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
   llvm::outs() << "unsafe-taint-check with find_unsafe_rs lib\n\n";
 
-  if (Argc < 2 || !std::filesystem::exists(Argv[1]) ||
-      std::filesystem::is_directory(Argv[1]))
+  if (argc < 2 || !std::filesystem::exists(argv[1]) ||
+      std::filesystem::is_directory(argv[1]))
   {
     llvm::errs() << "unsafe-taint-check \n"
                     "A small PhASAR-based program to check the unsafe taint for rust\n\n"
@@ -32,9 +32,9 @@ int main(int Argc, const char **Argv)
     return 1;
   }
 
-  std::vector EntryPoints = {"main"s};
+  std::vector entrypoints = {"main"s};
 
-  HelperAnalyses HA(Argv[1], EntryPoints);
+  HelperAnalyses HA(argv[1], entrypoints);
 
   const auto *F = HA.getProjectIRDB().getFunctionDefinition("main");
   if (!F)
@@ -90,22 +90,32 @@ int main(int Argc, const char **Argv)
     llvm::outs() << f->getName() << "\n";
   }
 
-  // llvm::outs() << "free(find_unsafe_rs) \n";
   find_unsafe_rs_free(find_unsafe_rs);
 
-  // IFDS template parametrization test
-  llvm::outs() << "\n\nTesting IFDS:\n";
-  auto L = createAnalysisProblem<IFDSSolverTest>(HA, EntryPoints);
-  IFDSSolver S(L, &HA.getICFG());
-  auto IFDSResults = S.solve();
-  // IFDSResults.dumpResults(HA.getICFG());
+  llvm::outs() << "\n\nTesting IFDS taint analysis with unsafe functions as source:\n";
 
-  // IDE template parametrization test
-  llvm::outs() << "\n\nTesting IDE:\n";
-  auto M = createAnalysisProblem<IDELinearConstantAnalysis>(HA, EntryPoints);
-  // Alternative way of solving an IFDS/IDEProblem:
-  auto IDEResults = solveIDEProblem(M, HA.getICFG());
-  // IDEResults.dumpResults(HA.getICFG());
+  TaintConfigData taint_config_data;
+  for (auto f: unsafe_functions) {
+    taint_config_data.Functions.push_back(
+      FunctionData {
+        .Name = f->getName().str(),
+        .ReturnCat = TaintCategory::Source,
+      }
+    );
+  }
+  taint_config_data.Functions.push_back(
+    FunctionData {
+      .Name = "sink",
+      .ReturnCat = TaintCategory::Sink,
+    }
+  );
+  LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
+  llvm::outs() << "taint config:\n" << taint_config << "\n";
+  IFDSTaintAnalysis analysis_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
+
+  IFDSSolver S(analysis_problem, &HA.getICFG());
+  auto IFDSResults = S.solve();
+  IFDSResults.dumpResults(HA.getICFG());
 
   return 0;
 }

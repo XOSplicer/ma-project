@@ -13,6 +13,10 @@ path = "src/unsafe-01.rs"
 name = "unsafe-tests_unsafe-02"
 path = "src/unsafe-02.rs"
 
+[[bin]]
+name = "unsafe-tests_unsafe-03"
+path = "src/unsafe-03.rs"
+
 [dependencies]
 
 [profile.dev]
