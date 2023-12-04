@@ -106,16 +106,24 @@ int main(int argc, const char **argv)
   taint_config_data.Functions.push_back(
     FunctionData {
       .Name = "sink",
-      .ReturnCat = TaintCategory::Sink,
+      .HasAllSinkParam = true,
     }
   );
   LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
   llvm::outs() << "taint config:\n" << taint_config << "\n";
-  IFDSTaintAnalysis analysis_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
+  IFDSTaintAnalysis taint_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
 
-  IFDSSolver S(analysis_problem, &HA.getICFG());
+  IFDSSolver S(taint_problem, &HA.getICFG());
   auto IFDSResults = S.solve();
   IFDSResults.dumpResults(HA.getICFG());
+
+  llvm::outs() << "\nLeaks found:\n";
+  for (const auto l: taint_problem.Leaks) {
+    llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
+      for (const auto v: l.second) {
+        llvm::outs() << " -> Value: " << *v << "\n";
+      }
+  }
 
   return 0;
 }
