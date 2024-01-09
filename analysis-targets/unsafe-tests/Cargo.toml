@@ -17,6 +17,10 @@ path = "src/unsafe-02.rs"
 name = "unsafe-tests_unsafe-03"
 path = "src/unsafe-03.rs"
 
+[[bin]]
+name = "unsafe-tests_drop-alias-01"
+path = "src/drop-alias-01.rs"
+
 [dependencies]
 
 [profile.dev]
