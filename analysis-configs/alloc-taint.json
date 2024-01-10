@@ -1,0 +1,25 @@
+{
+    "name": "alloc-taint",
+    "version": 1,
+    "functions": [
+        {
+            "name": "__rust_alloc",
+            "ret": "source",
+            "params": {}
+        },
+        {
+            "name": "__rust_alloc_zeroed",
+            "ret": "source",
+            "params": {}
+        },
+        {
+            "name": "__rust_dealloc",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        }
+    ],
+    "variables": []
+}
