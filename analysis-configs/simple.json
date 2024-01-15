@@ -1,0 +1,20 @@
+{
+    "name": "simple source sink sanitize",
+    "version": 1,
+    "functions": [
+        {
+            "name": "source",
+            "ret": "source",
+            "params": {}
+        },
+        {
+            "name": "sink",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        }
+    ],
+    "variables": []
+}

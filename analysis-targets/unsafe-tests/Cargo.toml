@@ -25,6 +25,14 @@ path = "src/drop-alias-01.rs"
 name = "unsafe-tests_drop-uninit-01"
 path = "src/drop-uninit-01.rs"
 
+[[bin]]
+name = "unsafe-tests_struct-ref-01"
+path = "src/struct-ref-01.rs"
+
+[[bin]]
+name = "unsafe-tests_struct-ref-02"
+path = "src/struct-ref-02.rs"
+
 [dependencies]
 
 [profile.dev]
