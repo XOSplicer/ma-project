@@ -13,7 +13,7 @@ use std::{fs::File, io::Read};
 use proc_macro2::{LineColumn, Span};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{self, ExprUnsafe, ItemFn, ItemImpl, ItemTrait};
+use syn::{self, ExprUnsafe, ImplItemFn, ItemFn, ItemImpl, ItemTrait};
 
 // NOTE: LLVM debug symbols for location of litems correspond to the line of the fn item of the function, not of the attributes, as in syn
 
@@ -21,6 +21,7 @@ use syn::{self, ExprUnsafe, ItemFn, ItemImpl, ItemTrait};
 pub struct UnsafeVisitor<'ast> {
     pub unsafe_blocks: HashMap<SimpleSpan, &'ast ExprUnsafe>,
     pub unsafe_fns: HashMap<SimpleSpan, &'ast ItemFn>,
+    pub unsafe_impl_fns: HashMap<SimpleSpan, &'ast ImplItemFn>,
     pub unsafe_traits: HashMap<SimpleSpan, &'ast ItemTrait>,
     pub unsafe_impls: HashMap<SimpleSpan, &'ast ItemImpl>,
 }
@@ -57,6 +58,13 @@ impl<'ast> Visit<'ast> for UnsafeVisitor<'ast> {
                 .insert(SimpleSpan::from_span(node.span()), node);
         }
         syn::visit::visit_item_impl(self, node);
+    }
+    fn visit_impl_item_fn(&mut self, node: &'ast ImplItemFn) {
+        if node.sig.unsafety.is_some() {
+            self.unsafe_impl_fns
+                .insert(SimpleSpan::from_span(node.span()), node);
+        }
+        syn::visit::visit_impl_item_fn(self, node);
     }
 }
 
@@ -123,6 +131,13 @@ impl FindUnsafeRs {
                 .unsafe_fns
                 .into_iter()
                 .map(|(k, v)| (k, v.sig.ident.to_string()))
+                // FIXME: should this be an distinct field in UnsafeLocations?
+                .chain(
+                    visitor
+                        .unsafe_impl_fns
+                        .into_iter()
+                        .map(|(k, v)| (k, v.sig.ident.to_string())),
+                )
                 .collect(),
             traits: visitor
                 .unsafe_traits

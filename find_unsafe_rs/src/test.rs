@@ -52,6 +52,19 @@ fn file_unsafe_04() -> Result<(), Error> {
 }
 
 #[test]
+fn file_unsafe_05() -> Result<(), Error> {
+    let f = FindUnsafeRs::new();
+    let path = "test/unsafe-05.rs";
+    assert!(!f.is_any_unsafe_location(path, LineColumn { line: 5, column: 0 })?);
+    assert!(f.is_any_unsafe_location(path, LineColumn { line: 10, column: 19 })?);
+    assert!(f.is_any_unsafe_location(path, LineColumn { line: 10, column: 1000 })?);
+    assert!(f.is_any_unsafe_location(path, LineColumn { line: 11, column: 0 })?);
+    assert!(!f.is_any_unsafe_location(path, LineColumn { line: 15, column: 2 })?);
+
+    Ok(())
+}
+
+#[test]
 fn multiple_files() -> Result<(), Error> {
     let f = FindUnsafeRs::new();
     let path = "test/unsafe-01.rs";
