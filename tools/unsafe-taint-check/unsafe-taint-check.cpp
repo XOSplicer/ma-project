@@ -96,10 +96,24 @@ int main(int argc, const char **argv)
 
   TaintConfigData taint_config_data;
   for (auto f: unsafe_functions) {
+    // f->hasStructRetAttr();
+    // all sret(%Type) marked arguments are considered reutrn values and therefore tained
+    // fill vec<int> with int if f->args()[i].getParamStructRetType() != NULL
+    std::vector<unsigned int> sretArgs;
+    unsigned int arg_num = 0;
+    for (auto arg = f->args().begin(); arg != f->args().end(); arg++) {
+      if(arg->hasStructRetAttr()) {
+        sretArgs.push_back(arg_num);
+      }
+      arg_num++;
+    }
+
     taint_config_data.Functions.push_back(
+      // TODO: add sret(*) params on pos 0 as source aswell if present
       FunctionData {
         .Name = f->getName().str(),
         .ReturnCat = TaintCategory::Source,
+        .SourceValues = sretArgs,
       }
     );
   }

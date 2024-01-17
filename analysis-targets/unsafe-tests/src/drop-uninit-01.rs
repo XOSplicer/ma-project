@@ -26,8 +26,14 @@ impl Foo {
     }
 }
 
+#[no_mangle]
+fn sink(v: Foo) -> Foo {
+    v
+}
+
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let _f = unsafe { Foo::read_from(&mut &[0_u8, 0, 0, 0][..]) };
+    let f = unsafe { Foo::read_from(&mut &[0_u8, 0, 0, 0][..]) };
+    sink(f);
     return 0;
 }
