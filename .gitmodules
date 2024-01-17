@@ -1,6 +1,8 @@
 [submodule "phasar"]
 	path = phasar
-	url = git@github.com:secure-software-engineering/phasar.git
+	url = git@gitlab.fachschaften.org:fstegmaier/phasar.git
+#   url = git@github.com:secure-software-engineering/phasar.git
+#	url = git@gitlab.fachschaften.org:fstegmaier/phasar.git
 [submodule "corrosion"]
 	path = corrosion
 	url = https://github.com/corrosion-rs/corrosion.git
