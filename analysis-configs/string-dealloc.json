@@ -1,0 +1,24 @@
+{
+    "name": "string-dealloc",
+    "version": 1,
+    "functions": [
+        {
+            "name": "_ZN76_$LT$alloc..string..String$u20$as$u20$core..convert..From$LT$$RF$str$GT$$GT$4from17hf3776157fd20f139E",
+            "ret": "source",
+            "params": {
+                "source": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "_ZN4core3ptr42drop_in_place$LT$alloc..string..String$GT$17h4661b62dbc7c0817E",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        }
+    ],
+    "variables": []
+}

@@ -86,7 +86,8 @@ int main(int argc, const char **argv)
   }
 
   llvm::outs() << "\n\nUnsafe functions:\n";
-  for (auto f: unsafe_functions) {
+  for (auto f : unsafe_functions)
+  {
     llvm::outs() << f->getName() << "\n";
   }
 
@@ -95,36 +96,38 @@ int main(int argc, const char **argv)
   llvm::outs() << "\n\nTesting IFDS taint analysis with unsafe functions as source:\n";
 
   TaintConfigData taint_config_data;
-  for (auto f: unsafe_functions) {
+  for (auto f : unsafe_functions)
+  {
     // f->hasStructRetAttr();
     // all sret(%Type) marked arguments are considered reutrn values and therefore tained
     // fill vec<int> with int if f->args()[i].getParamStructRetType() != NULL
     std::vector<unsigned int> sretArgs;
     unsigned int arg_num = 0;
-    for (auto arg = f->args().begin(); arg != f->args().end(); arg++) {
-      if(arg->hasStructRetAttr()) {
+    for (auto &arg : f->args())
+    {
+      if (arg.hasStructRetAttr())
+      {
         sretArgs.push_back(arg_num);
       }
       arg_num++;
     }
 
     taint_config_data.Functions.push_back(
-      // TODO: add sret(*) params on pos 0 as source aswell if present
-      FunctionData {
-        .Name = f->getName().str(),
-        .ReturnCat = TaintCategory::Source,
-        .SourceValues = sretArgs,
-      }
-    );
+        // TODO: add sret(*) params on pos 0 as source aswell if present
+        FunctionData{
+            .Name = f->getName().str(),
+            .ReturnCat = TaintCategory::Source,
+            .SourceValues = sretArgs,
+        });
   }
   taint_config_data.Functions.push_back(
-    FunctionData {
-      .Name = "sink",
-      .HasAllSinkParam = true,
-    }
-  );
+      FunctionData{
+          .Name = "sink",
+          .HasAllSinkParam = true,
+      });
   LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
-  llvm::outs() << "taint config:\n" << taint_config << "\n";
+  llvm::outs() << "taint config:\n"
+               << taint_config << "\n";
   IFDSTaintAnalysis taint_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
 
   IFDSSolver S(taint_problem, &HA.getICFG());
@@ -132,11 +135,13 @@ int main(int argc, const char **argv)
   IFDSResults.dumpResults(HA.getICFG());
 
   llvm::outs() << "\nLeaks found:\n";
-  for (const auto l: taint_problem.Leaks) {
+  for (const auto l : taint_problem.Leaks)
+  {
     llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
-      for (const auto v: l.second) {
-        llvm::outs() << " -> Value: " << *v << "\n";
-      }
+    for (const auto v : l.second)
+    {
+      llvm::outs() << " -> Value: " << *v << "\n";
+    }
   }
 
   return 0;
