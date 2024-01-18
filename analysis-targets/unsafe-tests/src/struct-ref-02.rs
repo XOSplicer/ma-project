@@ -21,7 +21,7 @@ fn bar(f: &mut Foo, x: u32, y0: u32) {
 }
 
 #[no_mangle]
-fn source() -> u32 {
+unsafe fn source() -> u32 {
     42
 }
 
@@ -33,8 +33,8 @@ fn sink(value: u32) -> u32 {
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
     let mut foo = Foo::new();
-    let x = source();
-    let y0 = source();
+    let x = unsafe { source() };
+    let y0 = unsafe { source() };
     bar(&mut foo, x, y0);
     sink(foo.x);
     sink(foo.y[0]);

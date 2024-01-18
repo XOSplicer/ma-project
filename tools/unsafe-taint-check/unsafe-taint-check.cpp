@@ -21,6 +21,8 @@ int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
+  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+
   llvm::outs() << "unsafe-taint-check with find_unsafe_rs lib\n\n";
 
   if (argc < 2 || !std::filesystem::exists(argv[1]) ||
@@ -39,11 +41,11 @@ int main(int argc, const char **argv)
   const auto *F = HA.getProjectIRDB().getFunctionDefinition("main");
   if (!F)
   {
-    llvm::errs() << "error: file does not contain a 'main' function!\n";
+    PHASAR_LOG_LEVEL(CRITICAL, "error: file does not contain a 'main' function!");
     return 1;
   }
 
-  HA.getICFG().print();
+  // HA.getICFG().print();
 
   auto *find_unsafe_rs = find_unsafe_rs_new();
 
@@ -68,14 +70,13 @@ int main(int argc, const char **argv)
         find_unsafe_rs, path.c_str(), sub->getLine(), 1000, &is_unsafe);
     if (err)
     {
-      llvm::outs() << "Error in file " << path.string()
-                   << " (error " << err << " ): " << strerror(err) << "\n";
+      PHASAR_LOG_LEVEL(WARNING, "Error in file " << path.string() << " (error " << err << " ): " << strerror(err));
       continue;
     }
     llvm::outs()
         << f->getName()
         << " ('" << sub->getName() << "')"
-        << " : " << path.string() << "::"
+        << " : " << path.string() << ":"
         << sub->getLine() << " ["
         << (is_unsafe ? "unsafe" : "safe")
         << "]\n";
@@ -98,8 +99,7 @@ int main(int argc, const char **argv)
   TaintConfigData taint_config_data;
   for (auto f : unsafe_functions)
   {
-    // f->hasStructRetAttr();
-    // all sret(%Type) marked arguments are considered reutrn values and therefore tained
+    // all sret(%Type) marked arguments are considered return values and therefore tainted
     // fill vec<int> with int if f->args()[i].getParamStructRetType() != NULL
     std::vector<unsigned int> sretArgs;
     unsigned int arg_num = 0;
@@ -113,7 +113,6 @@ int main(int argc, const char **argv)
     }
 
     taint_config_data.Functions.push_back(
-        // TODO: add sret(*) params on pos 0 as source aswell if present
         FunctionData{
             .Name = f->getName().str(),
             .ReturnCat = TaintCategory::Source,
@@ -130,9 +129,10 @@ int main(int argc, const char **argv)
                << taint_config << "\n";
   IFDSTaintAnalysis taint_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
 
+  PHASAR_LOG_LEVEL(INFO, "Solving IFDSTaintAnalysis taint problem");
   IFDSSolver S(taint_problem, &HA.getICFG());
   auto IFDSResults = S.solve();
-  IFDSResults.dumpResults(HA.getICFG());
+  // IFDSResults.dumpResults(HA.getICFG());
 
   llvm::outs() << "\nLeaks found:\n";
   for (const auto l : taint_problem.Leaks)

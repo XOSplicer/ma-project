@@ -7,7 +7,7 @@ struct Foo {
 
 impl Foo {
     fn new() -> Self {
-        let x = source();
+        let x = unsafe { source() };
         Foo {
             x,
             y: [0; 16],
@@ -16,7 +16,7 @@ impl Foo {
 }
 
 #[no_mangle]
-fn source() -> u32 {
+unsafe fn source() -> u32 {
     42
 }
 

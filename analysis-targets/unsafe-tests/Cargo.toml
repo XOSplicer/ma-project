@@ -41,6 +41,11 @@ path = "src/struct-ref-03.rs"
 name = "unsafe-tests_simple-taint-01"
 path = "src/simple-taint-01.rs"
 
+[[bin]]
+name = "unsafe-tests_struct-01"
+path = "src/struct-01.rs"
+
+
 [dependencies]
 
 [profile.dev]

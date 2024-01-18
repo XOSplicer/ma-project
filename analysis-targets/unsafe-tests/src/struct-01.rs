@@ -2,19 +2,17 @@
 
 struct Foo {
     x: u32,
-    y: [u32; 16],
+    y: u32
 }
 
 impl Foo {
     fn new() -> Self {
-        Foo { x: 0, y: [0; 16] }
+        let x = unsafe { source() };
+        Foo {
+            x,
+            y: 0
+        }
     }
-}
-
-#[no_mangle]
-fn bar(f: &mut Foo, x: u32, y0: u32) {
-    f.x = x;
-    f.y[0] = y0;
 }
 
 #[no_mangle]
@@ -29,11 +27,8 @@ fn sink(value: u32) -> u32 {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let mut foo = Foo::new();
-    let x = unsafe { source() };
-    let y0 = unsafe { source() };
-    bar(&mut foo, x, y0);
+    let foo = Foo::new();
     sink(foo.x);
-    sink(foo.y[0]);
+    sink(foo.y);
     return 0;
 }
