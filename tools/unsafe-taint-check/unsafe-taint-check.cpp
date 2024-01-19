@@ -17,40 +17,11 @@
 
 using namespace psr;
 
-int main(int argc, const char **argv)
+std::vector<llvm::Function const *> get_unsafe_functions(HelperAnalyses &HA)
 {
-  using namespace std::string_literals;
-
-  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
-
-  llvm::outs() << "unsafe-taint-check with find_unsafe_rs lib\n\n";
-
-  if (argc < 2 || !std::filesystem::exists(argv[1]) ||
-      std::filesystem::is_directory(argv[1]))
-  {
-    llvm::errs() << "unsafe-taint-check \n"
-                    "A small PhASAR-based program to check the unsafe taint for rust\n\n"
-                    "Usage: unsafe-taint-check <LLVM IR file>\n";
-    return 1;
-  }
-
-  std::vector entrypoints = {"main"s};
-
-  HelperAnalyses HA(argv[1], entrypoints);
-
-  const auto *F = HA.getProjectIRDB().getFunctionDefinition("main");
-  if (!F)
-  {
-    PHASAR_LOG_LEVEL(CRITICAL, "error: file does not contain a 'main' function!");
-    return 1;
-  }
-
-  // HA.getICFG().print();
-
   auto *find_unsafe_rs = find_unsafe_rs_new();
-
   std::vector<llvm::Function const *> unsafe_functions;
-  llvm::outs() << "\n\nDeclared functions [safety]:\n";
+  llvm::outs() << "\nDeclared functions [safety]:";
   for (const llvm::Function *const f : HA.getICFG().getAllFunctions())
   {
     if (f->getName() == "llvm.dbg.declare")
@@ -85,16 +56,47 @@ int main(int argc, const char **argv)
       unsafe_functions.push_back(f);
     }
   }
+  find_unsafe_rs_free(find_unsafe_rs);
+  return unsafe_functions;
+}
 
-  llvm::outs() << "\n\nUnsafe functions:\n";
+int main(int argc, const char **argv)
+{
+  using namespace std::string_literals;
+
+  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+
+  llvm::outs() << "unsafe-taint-check with find_unsafe_rs lib\n\n";
+
+  if (argc < 2 || !std::filesystem::exists(argv[1]) ||
+      std::filesystem::is_directory(argv[1]))
+  {
+    llvm::errs() << "unsafe-taint-check \n"
+                    "A small PhASAR-based program to check the unsafe taint for rust\n\n"
+                    "Usage: unsafe-taint-check <LLVM IR file>\n";
+    return 1;
+  }
+
+  std::vector entrypoints = {"main"s};
+
+  HelperAnalyses HA(argv[1], entrypoints);
+
+  const auto *F = HA.getProjectIRDB().getFunctionDefinition("main");
+  if (!F)
+  {
+    PHASAR_LOG_LEVEL(CRITICAL, "error: file does not contain a 'main' function!");
+    return 1;
+  }
+
+  // HA.getICFG().print();
+  auto unsafe_functions = get_unsafe_functions(HA);
+  llvm::outs() << "\nUnsafe functions:\n";
   for (auto f : unsafe_functions)
   {
     llvm::outs() << f->getName() << "\n";
   }
 
-  find_unsafe_rs_free(find_unsafe_rs);
-
-  llvm::outs() << "\n\nTesting IFDS taint analysis with unsafe functions as source:\n";
+  PHASAR_LOG_LEVEL(INFO, "Testing IFDS taint analysis with unsafe functions as source:");
 
   TaintConfigData taint_config_data;
   for (auto f : unsafe_functions)
@@ -127,15 +129,17 @@ int main(int argc, const char **argv)
   LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
   llvm::outs() << "taint config:\n"
                << taint_config << "\n";
-  IFDSTaintAnalysis taint_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
+
+  IFDSTaintAnalysis ifds_taint_problem(&HA.getProjectIRDB(), &HA.getAliasInfo(), &taint_config);
 
   PHASAR_LOG_LEVEL(INFO, "Solving IFDSTaintAnalysis taint problem");
-  IFDSSolver S(taint_problem, &HA.getICFG());
+  IFDSSolver S(ifds_taint_problem, &HA.getICFG());
   auto IFDSResults = S.solve();
   // IFDSResults.dumpResults(HA.getICFG());
 
-  llvm::outs() << "\nLeaks found:\n";
-  for (const auto l : taint_problem.Leaks)
+  llvm::outs() << "\n"
+               << ifds_taint_problem.Leaks.size() << " leaks found using IFDS Taint:\n";
+  for (const auto l : ifds_taint_problem.Leaks)
   {
     llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
     for (const auto v : l.second)
@@ -143,6 +147,29 @@ int main(int argc, const char **argv)
       llvm::outs() << " -> Value: " << *v << "\n";
     }
   }
+  llvm::outs() << "\n";
+
+  PHASAR_LOG_LEVEL(INFO, "Testing IDE extended taint analysis with unsafe functions as source:");
+
+  const std::vector<std::string> entry_points = {"main"};
+  auto ide_xtaint_problem =
+      createAnalysisProblem<IDEExtendedTaintAnalysis<>>(HA, taint_config, entry_points);
+
+  PHASAR_LOG_LEVEL(INFO, "Solving IDEXTaintAnalysis taint problem");
+  IDESolver IDE_S(ide_xtaint_problem, &HA.getICFG());
+  auto IDEResults = IDE_S.solve();
+
+  llvm::outs() << "\n"
+               << ide_xtaint_problem.getAllLeaks(IDEResults).size() << " leaks found using IDE XTaint:\n";
+  for (const auto l : ide_xtaint_problem.getAllLeaks(IDEResults))
+  {
+    llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
+    for (const auto v : l.second)
+    {
+      llvm::outs() << " -> Value: " << *v << "\n";
+    }
+  }
+  llvm::outs() << "\n";
 
   return 0;
 }
