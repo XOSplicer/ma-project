@@ -60,6 +60,34 @@ std::vector<llvm::Function const *> get_unsafe_functions(HelperAnalyses &HA)
   return unsafe_functions;
 }
 
+psr::XTaint::LeakMap_t convert_leaks(std::map<const llvm::Instruction *, std::set<const llvm::Value *>> &leaks)
+{
+  auto map = psr::XTaint::LeakMap_t();
+  for (const auto l : leaks)
+  {
+    auto set = llvm::SmallSet<const llvm::Value *, 1U>();
+    for (const auto v : l.second)
+    {
+      set.insert(v);
+    }
+    map.emplace(std::make_pair(l.first, set));
+  }
+  return map;
+}
+
+void print_leaks(psr::XTaint::LeakMap_t &leaks)
+{
+  for (const auto l : leaks)
+  {
+    llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
+    for (const auto v : l.second)
+    {
+      llvm::outs() << " -> Value: " << *v << "\n";
+    }
+  }
+  llvm::outs() << "\n";
+}
+
 int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
@@ -137,17 +165,11 @@ int main(int argc, const char **argv)
   auto IFDSResults = S.solve();
   // IFDSResults.dumpResults(HA.getICFG());
 
+  auto ifds_taint_leaks = convert_leaks(ifds_taint_problem.Leaks);
   llvm::outs() << "\n"
-               << ifds_taint_problem.Leaks.size() << " leaks found using IFDS Taint:\n";
-  for (const auto l : ifds_taint_problem.Leaks)
-  {
-    llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
-    for (const auto v : l.second)
-    {
-      llvm::outs() << " -> Value: " << *v << "\n";
-    }
-  }
-  llvm::outs() << "\n";
+               << ifds_taint_leaks.size()
+               << " leaks found using IFDS Taint:\n";
+  print_leaks(ifds_taint_leaks);
 
   PHASAR_LOG_LEVEL(INFO, "Testing IDE extended taint analysis with unsafe functions as source:");
 
@@ -159,17 +181,11 @@ int main(int argc, const char **argv)
   IDESolver IDE_S(ide_xtaint_problem, &HA.getICFG());
   auto IDEResults = IDE_S.solve();
 
+  auto ide_xtaint_leaks = ide_xtaint_problem.getAllLeaks(IDEResults);
   llvm::outs() << "\n"
-               << ide_xtaint_problem.getAllLeaks(IDEResults).size() << " leaks found using IDE XTaint:\n";
-  for (const auto l : ide_xtaint_problem.getAllLeaks(IDEResults))
-  {
-    llvm::outs() << "IR: " << *l.first << " -> Leaks values: \n";
-    for (const auto v : l.second)
-    {
-      llvm::outs() << " -> Value: " << *v << "\n";
-    }
-  }
-  llvm::outs() << "\n";
+               << ide_xtaint_leaks.size()
+               << " leaks found using IDE XTaint:\n";
+  print_leaks(ide_xtaint_leaks);
 
   return 0;
 }
