@@ -17,6 +17,9 @@
 
 using namespace psr;
 
+
+/// @brief Find all functions in the module that are marked as `unsafe`. Uses find_unsafe_rs.
+/// @param HA
 std::vector<llvm::Function const *> get_unsafe_functions(HelperAnalyses &HA)
 {
   auto *find_unsafe_rs = find_unsafe_rs_new();
@@ -60,6 +63,7 @@ std::vector<llvm::Function const *> get_unsafe_functions(HelperAnalyses &HA)
   return unsafe_functions;
 }
 
+/// @brief Convert IFDS leak map to XTaint leak map for uniform data structure
 psr::XTaint::LeakMap_t convert_leaks(std::map<const llvm::Instruction *, std::set<const llvm::Value *>> &leaks)
 {
   auto map = psr::XTaint::LeakMap_t();
@@ -154,6 +158,25 @@ int main(int argc, const char **argv)
           .Name = "sink",
           .HasAllSinkParam = true,
       });
+
+  // set all drop implementations as sinks
+  for (const llvm::Function *const f : HA.getICFG().getAllFunctions()) {
+    const llvm::DISubprogram *const sub = f->getSubprogram();
+    if (!sub)
+    {
+      continue;
+    }
+    auto name = sub->getName().split("<").first;
+    PHASAR_LOG_LEVEL(INFO, "DBG: DISub Name w/o <...>: " << name);
+    if (name.contains("drop")) {
+        taint_config_data.Functions.push_back(
+      FunctionData{
+          .Name = sub->getLinkageName().str(),
+          .HasAllSinkParam = true,
+      });
+    }
+  }
+
   LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
   llvm::outs() << "taint config:\n"
                << taint_config << "\n";

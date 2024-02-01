@@ -45,6 +45,14 @@ path = "src/simple-taint-01.rs"
 name = "unsafe-tests_struct-01"
 path = "src/struct-01.rs"
 
+[[bin]]
+name = "unsafe-tests_uaf-slice-01"
+path = "src/uaf-slice-01.rs"
+
+[[bin]]
+name = "unsafe-tests_drop-uninit-02"
+path = "src/drop-uninit-02.rs"
+
 
 [dependencies]
 

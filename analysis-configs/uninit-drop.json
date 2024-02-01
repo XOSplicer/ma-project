@@ -1,0 +1,61 @@
+
+
+{
+    "name": "unint-drop",
+    "version": 1,
+    "functions": [
+        {
+            "name": "_ZN4core3mem13uninitialized17h9404c3065a4dc6a5E",
+            "ret": "source",
+            "params": {
+                "source": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "_ZN4core3mem13uninitialized17hb4fa0b387c854fb3E",
+            "ret": "source",
+            "params": {
+                "source": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "_ZN27unsafe_tests_drop_uninit_023Foo10unsafe_new17h9e1b3b6ee99f6029E",
+            "ret": "source",
+            "params": {
+                "source": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "_ZN4core3ptr53drop_in_place$LT$unsafe_tests_drop_uninit_01..Foo$GT$17h913c675daa558d99E",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "_ZN4core3mem4drop17h6847ee17e2e224beE",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        },
+        {
+            "name": "sink",
+            "params": {
+                "sink": [
+                    0
+                ]
+            }
+        }
+
+    ],
+    "variables": []
+}
