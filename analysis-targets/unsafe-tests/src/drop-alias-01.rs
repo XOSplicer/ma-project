@@ -9,8 +9,13 @@
 
 #![feature(start)]
 
+#[inline(never)]
+unsafe fn make_string() -> String {
+    String::from("a tmp string")
+}
+
 fn genvec() -> Vec<u8> {
-    let mut s = String::from("a tmp string");
+    let mut s = unsafe { make_string() };
     let ptr = s.as_mut_ptr();
     let v;
     unsafe {

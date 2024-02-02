@@ -13,6 +13,7 @@ RUN apt-get -y update && \
         dirmngr \
         doxygen \
         g++ \
+        gdb \
         git \
         gpg \
         graphviz \
