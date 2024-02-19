@@ -20,7 +20,8 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 
 # subdirectories
 
-set(Rust_TOOLCHAIN nightly-2022-05-18)
+# set(Rust_TOOLCHAIN nightly-2022-05-18)
+set(Rust_TOOLCHAIN nightly-2022-07-09)
 
 add_subdirectory(phasar)
 add_subdirectory(corrosion)
