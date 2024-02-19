@@ -157,7 +157,16 @@ int main(int argc, const char **argv)
           .Name = "sink",
           .HasAllSinkParam = true,
       });
-
+  taint_config_data.Functions.push_back(
+      FunctionData{
+          .Name = "__rust_alloc",
+          .ReturnCat = TaintCategory::Source,
+      });
+  taint_config_data.Functions.push_back(
+      FunctionData{
+          .Name = "__rust_alloc_zeroed",
+          .ReturnCat = TaintCategory::Source,
+      });
   // set all drop implementations as sinks
   for (const llvm::Function *const f : HA.getICFG().getAllFunctions())
   {
@@ -255,29 +264,6 @@ int main(int argc, const char **argv)
       llvm::outs() << "\n";
     }
   }
-
-  /*
-    for (const auto leak1 : ide_xtaint_leaks)
-    {
-      for (const auto leak2 : ide_xtaint_leaks)
-      {
-        if (leak1.first == leak2.first)
-        {
-          continue;
-        }
-        for (auto const value1 : leak1.second)
-        {
-          if (leak2.second.contains(value1))
-          {
-            llvm::outs() << "Value: " << *value1 << "\n"
-                         << "is leaked twice by instructions: \n"
-                         << " -> " << *leak1.first << "\n"
-                         << " -> " << *leak2.first << "\n\n";
-          }
-        }
-      }
-    }
-  */
 
   return 0;
 }
