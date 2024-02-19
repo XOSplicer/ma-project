@@ -18,11 +18,12 @@ link_directories(${LLVM_LIB_PATH} ${LLVM_LIBRARY_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
-# subdirectories
-
 # set(Rust_TOOLCHAIN nightly-2022-05-18)
-set(Rust_TOOLCHAIN nightly-2022-07-09)
+# set(Rust_TOOLCHAIN nightly-2022-06-27)
+# set(Rust_TOOLCHAIN nightly-2022-07-09)
+set(Rust_TOOLCHAIN nightly-2022-08-08)
 
+# subdirectories
 add_subdirectory(phasar)
 add_subdirectory(corrosion)
 add_subdirectory(find_unsafe_rs)

@@ -58,13 +58,12 @@ RUN mkdir -p /etc/apt/keyrings/ && \
 
 RUN pip3 install Pygments pyyaml wllvm
 
-ARG RUST_TOOLCHAIN_1="nightly-2022-05-18"
-ARG RUST_TOOLCHAIN_2="nightly-2022-07-09"
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y && \
-    . "$HOME/.cargo/env" && \
-    /root/.cargo/bin/rustup toolchain add ${RUST_TOOLCHAIN_1} && \
-    /root/.cargo/bin/rustup toolchain add ${RUST_TOOLCHAIN_2}
+RUN . "$HOME/.cargo/env" && /root/.cargo/bin/rustup toolchain add nightly-2022-05-18
+RUN . "$HOME/.cargo/env" && /root/.cargo/bin/rustup toolchain add nightly-2022-06-27
+RUN . "$HOME/.cargo/env" && /root/.cargo/bin/rustup toolchain add nightly-2022-07-09
+RUN . "$HOME/.cargo/env" && /root/.cargo/bin/rustup toolchain add nightly-2022-08-08
 
 ENV PATH=/root/.cargo/bin:$PATH
 
