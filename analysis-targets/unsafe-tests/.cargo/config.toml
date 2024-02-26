@@ -2,5 +2,9 @@
 rustflags = [
     "--emit=llvm-ir",
     "-Cno-prepopulate-passes",
-    "-Csymbol-mangling-version=v0"
+    "-Csymbol-mangling-version=v0",
+    "-Cdebuginfo=2",
+    "-Clto=off",
+    "-Copt-level=0",
+    "-Cno-vectorize-loops",
 ]
