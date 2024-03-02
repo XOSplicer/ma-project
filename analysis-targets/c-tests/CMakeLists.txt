@@ -1,0 +1,1 @@
+generate_ll_file(FILE declare_only.c)
