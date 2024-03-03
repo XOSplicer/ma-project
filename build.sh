@@ -4,7 +4,7 @@ set -ex
 mkdir -p build
 cd build
 CC=clang CXX=clang++ cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
