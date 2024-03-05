@@ -13,6 +13,10 @@ path = "src/cve-2019-16140.rs"
 name = "simplified-cve-2019-16880"
 path = "src/cve-2019-16880.rs"
 
+[[bin]]
+name = "simplified-cve-2020-35891"
+path = "src/cve-2020-35891.rs"
+
 [dependencies]
 typenum = "=1.10.0"
 generic-array = "=0.12.0"
