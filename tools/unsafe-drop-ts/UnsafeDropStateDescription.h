@@ -73,6 +73,7 @@ namespace psr
     class UnsafeDropStateDescription
         : public TypeStateDescription<UnsafeDropState>
     {
+    public:
         using TypeStateDescription::getNextState;
 
         [[nodiscard]] bool isFactoryFunction(llvm::StringRef F) const override;
@@ -119,18 +120,20 @@ namespace psr
         }
     }; // class UnsafeDropStateDescription
 
+    extern template class IDETypeStateAnalysis<UnsafeDropStateDescription>;
+
     /**
      * The transition tokens of the Finite State machine, i.e. the functions called.
      * The STAR token represents all API that are not relevant.
-    */
-   enum class UnsafeDropToken : uint8_t {
+     */
+    enum class UnsafeDropToken : uint8_t
+    {
         STAR = 0,
         GET_PTR = 1,
         UNSAFE_CONSTRUCT = 2,
         DROP = 3,
         USE = 4,
-   };
-
+    };
 
 } // namespace psr
 

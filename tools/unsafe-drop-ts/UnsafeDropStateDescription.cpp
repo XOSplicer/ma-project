@@ -1,7 +1,16 @@
 #include "UnsafeDropStateDescription.h"
 
+#include "phasar/PhasarLLVM/DB/LLVMProjectIRDB.h"
+
+#include "llvm/ADT/StringMap.h"
+#include "llvm/Support/ErrorHandling.h"
+
+#include <string>
+
 namespace psr
 {
+
+    template class IDETypeStateAnalysis<UnsafeDropStateDescription>;
 
     llvm::StringRef to_string(UnsafeDropState State) noexcept
     {
@@ -38,6 +47,7 @@ namespace psr
 
     UnsafeDropState UnsafeDropStateDeltaFn(UnsafeDropToken token, UnsafeDropState state)
     {
+        llvm::report_fatal_error("UnsafeDropStateDeltaFn unimplemented!");
         // TODO: add correct transition destinations
         switch (token)
         {
@@ -193,6 +203,59 @@ namespace psr
             break;
         }
         llvm::report_fatal_error("received unknown token!");
+    }
+
+    bool UnsafeDropStateDescription::isFactoryFunction(llvm::StringRef F) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return false;
+    }
+
+    bool UnsafeDropStateDescription::isConsumingFunction(llvm::StringRef F) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return false;
+    }
+
+    bool UnsafeDropStateDescription::isAPIFunction(llvm::StringRef F) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return false;
+    }
+
+    UnsafeDropState
+    UnsafeDropStateDescription::getNextState(llvm::StringRef Tok,
+                                             UnsafeDropState S) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return UnsafeDropState::BOT;
+    }
+
+    std::string UnsafeDropStateDescription::getTypeNameOfInterest() const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return "";
+    }
+
+    std::set<int>
+    UnsafeDropStateDescription::getConsumerParamIdx(llvm::StringRef F) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return {};
+    }
+
+    std::set<int>
+    UnsafeDropStateDescription::getFactoryParamIdx(llvm::StringRef F) const
+    {
+        // TODO: implement
+        llvm::report_fatal_error("unimplemented!");
+        return {};
     }
 
 } // namespace psr
