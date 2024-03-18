@@ -25,6 +25,8 @@ namespace psr
      *
      * Note that TOP and BOT are revesed in all of PhASAR.
      */
+    // TODO: add more destinct "error" cases for UAF and DF as they
+    // are not really errors in this sense but the patterns we want to detect
     enum class UnsafeDropState : uint8_t
     {
         BOT = 0,

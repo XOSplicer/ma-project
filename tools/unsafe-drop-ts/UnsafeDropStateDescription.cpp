@@ -5,6 +5,8 @@
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/ErrorHandling.h"
 
+#include "phasar.h"
+
 #include <string>
 
 namespace psr
@@ -58,22 +60,22 @@ namespace psr
                 return UnsafeDropState::BOT;
                 break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::UNINIT;
                 break;
             case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::GET_PTR;
                 break;
             case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::UNSAFE_CONSTRUCT;
                 break;
             case UnsafeDropState::DROP:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::DROP;
                 break;
             case UnsafeDropState::USE:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::USE;
                 break;
             case UnsafeDropState::ERROR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
@@ -88,22 +90,22 @@ namespace psr
                 return UnsafeDropState::BOT;
                 break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::GET_PTR;
                 break;
             case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::DROP:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::USE:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::ERROR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
@@ -118,22 +120,22 @@ namespace psr
                 return UnsafeDropState::BOT;
                 break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::UNSAFE_CONSTRUCT;
                 break;
             case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::UNSAFE_CONSTRUCT;
                 break;
             case UnsafeDropState::DROP:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::USE:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::ERROR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
@@ -148,22 +150,22 @@ namespace psr
                 return UnsafeDropState::BOT;
                 break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::DROP;
                 break;
             case UnsafeDropState::DROP:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::DROP;
                 break;
             case UnsafeDropState::USE:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::ERROR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
@@ -178,22 +180,22 @@ namespace psr
                 return UnsafeDropState::BOT;
                 break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::USE;
                 break;
             case UnsafeDropState::DROP:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::USE;
                 break;
             case UnsafeDropState::USE:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::USE;
                 break;
             case UnsafeDropState::ERROR:
-                return UnsafeDropState::BOT;
+                return UnsafeDropState::ERROR;
                 break;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
@@ -208,22 +210,28 @@ namespace psr
     bool UnsafeDropStateDescription::isFactoryFunction(llvm::StringRef F) const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
-        return false;
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isFactoryFunction");
+        // return false;
+        // TODO: implement better heuristics and correct methods to model
+        PHASAR_LOG_LEVEL(DEBUG, "isFactoryFunction: " << F);
+        return F.contains("new") || F.contains("from") || F.contains("with_capacity");
     }
 
     bool UnsafeDropStateDescription::isConsumingFunction(llvm::StringRef F) const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
-        return false;
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isConsumingFunction");
+        // return false;
+        PHASAR_LOG_LEVEL(DEBUG, "isConsumingFunction: " << F);
+        return true;
     }
 
     bool UnsafeDropStateDescription::isAPIFunction(llvm::StringRef F) const
     {
-        // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
-        return false;
+        PHASAR_LOG_LEVEL(DEBUG, "isAPIFunction: " << F);
+        // TODO: implement better heuristics and correct methods to model
+        return F.contains("drop") || F.contains("from_raw_parts") || F.contains("into_raw_parts");
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isAPIFunction");
     }
 
     UnsafeDropState
@@ -231,14 +239,14 @@ namespace psr
                                              UnsafeDropState S) const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
+        llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getNextState");
         return UnsafeDropState::BOT;
     }
 
     std::string UnsafeDropStateDescription::getTypeNameOfInterest() const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getTypeNameOfInterest");
         return "";
     }
 
@@ -246,16 +254,18 @@ namespace psr
     UnsafeDropStateDescription::getConsumerParamIdx(llvm::StringRef F) const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
-        return {};
+        PHASAR_LOG_LEVEL(DEBUG, "getConsumerParamIdx: " << F);
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getConsumerParamIdx");
+        return {0};
     }
 
     std::set<int>
     UnsafeDropStateDescription::getFactoryParamIdx(llvm::StringRef F) const
     {
         // TODO: implement
-        llvm::report_fatal_error("unimplemented!");
-        return {};
+        PHASAR_LOG_LEVEL(DEBUG, "getFactoryParamIdx: " << F);
+        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getFactoryParamIdx");
+        return {-1};
     }
 
 } // namespace psr

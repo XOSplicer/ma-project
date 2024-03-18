@@ -34,7 +34,7 @@ int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
-  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+  Logger::initializeStderrLogger(psr::SeverityLevel::DEBUG);
 
   if (int err = usage(argc, argv)) {
     return err;
@@ -49,6 +49,15 @@ int main(int argc, const char **argv)
     PHASAR_LOG_LEVEL(CRITICAL, "error: file does not contain a 'main' function!");
     return 1;
   }
+
+  llvm::outs() << "Creating problem description and solver\n";
+  auto ts_description = UnsafeDropStateDescription();
+  auto ide_ts_problem = createAnalysisProblem<IDETypeStateAnalysis<UnsafeDropStateDescription>>(HA, &ts_description, entrypoints);
+  auto ide_solver = IDESolver(ide_ts_problem, &HA.getICFG());
+  llvm::outs() << "Solving IDE problem\n";
+  auto ide_results = ide_solver.solve();
+  llvm::outs() << "IDE results:\n\n";
+  ide_results.dumpResults(HA.getICFG());
 
   return 0;
 }
