@@ -3,6 +3,7 @@
 
 #include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/IDETypeStateAnalysis.h"
 #include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/TypeStateDescriptions/TypeStateDescription.h"
+#include "phasar.h"
 
 #include <map>
 #include <set>
@@ -75,7 +76,12 @@ namespace psr
     class UnsafeDropStateDescription
         : public TypeStateDescription<UnsafeDropState>
     {
+    private:
+        HelperAnalyses &HA;
+
     public:
+        UnsafeDropStateDescription(HelperAnalyses &HA) : HA(HA) {}
+
         using TypeStateDescription::getNextState;
 
         [[nodiscard]] bool isFactoryFunction(llvm::StringRef F) const override;

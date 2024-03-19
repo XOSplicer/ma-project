@@ -34,7 +34,7 @@ int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
-  Logger::initializeStderrLogger(psr::SeverityLevel::DEBUG);
+  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
 
   if (int err = usage(argc, argv)) {
     return err;
@@ -51,7 +51,7 @@ int main(int argc, const char **argv)
   }
 
   llvm::outs() << "Creating problem description and solver\n";
-  auto ts_description = UnsafeDropStateDescription();
+  auto ts_description = UnsafeDropStateDescription(HA);
   auto ide_ts_problem = createAnalysisProblem<IDETypeStateAnalysis<UnsafeDropStateDescription>>(HA, &ts_description, entrypoints);
   auto ide_solver = IDESolver(ide_ts_problem, &HA.getICFG());
   llvm::outs() << "Solving IDE problem\n";
