@@ -6,3 +6,6 @@
 [submodule "corrosion"]
 	path = corrosion
 	url = https://github.com/corrosion-rs/corrosion.git
+[submodule "rustc_demangle/rustc-demangle"]
+	path = rustc_demangle/rustc-demangle
+	url = https://github.com/rust-lang/rustc-demangle.git
