@@ -1,15 +1,13 @@
 #ifndef UNSAFE_DROP_STATE_DESCRIPTION_H
 #define UNSAFE_DROP_STATE_DESCRIPTION_H
 
-#include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/IDETypeStateAnalysis.h"
-#include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/TypeStateDescriptions/TypeStateDescription.h"
-#include "phasar.h"
-
 #include <map>
 #include <set>
 #include <string>
-
 #include "llvm/ADT/StringRef.h"
+#include "phasar.h"
+#include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/IDETypeStateAnalysis.h"
+#include "phasar/PhasarLLVM/DataFlow/IfdsIde/Problems/TypeStateDescriptions/TypeStateDescription.h"
 
 namespace psr
 {

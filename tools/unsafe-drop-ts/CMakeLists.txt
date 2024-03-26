@@ -9,6 +9,7 @@ target_link_libraries(unsafe-drop-ts
     PUBLIC
     find_unsafe_rs
     phasar
+    rustc_demangle
     ${PHASAR_STD_FILESYSTEM}
 )
 

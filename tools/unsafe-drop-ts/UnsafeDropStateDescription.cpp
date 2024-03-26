@@ -1,18 +1,58 @@
+#include <string>
 #include "UnsafeDropStateDescription.h"
-
 #include "phasar/PhasarLLVM/DB/LLVMProjectIRDB.h"
-
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/ErrorHandling.h"
-
 #include "phasar.h"
+#include "rustc_demangle.h"
 
-#include <string>
+#define RUSTC_DEMANGLE_STRING_OUT_LEN 1024
 
 namespace psr
 {
 
+    // NOTE: demangle is usually not needed as phasar already uses the
+    // function name annotated in the debug information of the ll file
+    std::string rustc_demangle_string(llvm::StringRef sr)
+    {
+        const std::string s = sr.str();
+        const char *mangled = s.c_str();
+        char out[RUSTC_DEMANGLE_STRING_OUT_LEN] = {0};
+        const int no_err = rustc_demangle(mangled, out, RUSTC_DEMANGLE_STRING_OUT_LEN);
+        if (!no_err)
+        {
+            PHASAR_LOG_LEVEL(DEBUG, "Could not demangle string with rustc_demangle, falling back to identity str=" << sr);
+            return sr.str();
+        }
+        auto out_string = std::string(out);
+        PHASAR_LOG_LEVEL(DEBUG, "demangled '" << sr << "' to '" << out_string << "'");
+        return out_string;
+    }
+
     template class IDETypeStateAnalysis<UnsafeDropStateDescription>;
+
+    llvm::StringRef to_string(UnsafeDropToken Token) noexcept
+    {
+        switch (Token)
+        {
+        case UnsafeDropToken::STAR:
+            return "STAR";
+            break;
+        case UnsafeDropToken::GET_PTR:
+            return "GET_PTR";
+            break;
+        case UnsafeDropToken::UNSAFE_CONSTRUCT:
+            return "UNSAFE_CONSTRUCT";
+            break;
+        case UnsafeDropToken::DROP:
+            return "DROP";
+            break;
+        case UnsafeDropToken::USE:
+            return "USE";
+            break;
+        }
+        llvm::report_fatal_error("received unknown token!");
+    }
 
     llvm::StringRef to_string(UnsafeDropState State) noexcept
     {
@@ -49,8 +89,8 @@ namespace psr
 
     UnsafeDropState Delta(UnsafeDropToken token, UnsafeDropState state)
     {
-        //llvm::report_fatal_error("UnsafeDropStateDeltaFn unimplemented!");
-        // TODO: add correct transition destinations
+        // llvm::report_fatal_error("UnsafeDropStateDeltaFn unimplemented!");
+        //  TODO: add correct transition destinations
         switch (token)
         {
         case UnsafeDropToken::STAR:
@@ -207,16 +247,21 @@ namespace psr
         llvm::report_fatal_error("received unknown token!");
     }
 
-    UnsafeDropToken funcNameToToken(llvm::StringRef F) {
-        // TODO: improve with unmangling checks
+    UnsafeDropToken funcNameToToken(llvm::StringRef F)
+    {
+        std::string s = rustc_demangle_string(F);
+        auto demangled = llvm::StringRef(s);
         // TODO: implement
-        if (F.contains("into_raw_parts") || F.contains("as_mut_ptr")) {
+        if (demangled.contains("into_raw_parts") || demangled.contains("as_mut_ptr"))
+        {
             return UnsafeDropToken::GET_PTR;
         }
-        if (F.contains("from_raw_parts") || F.contains("from_raw")) {
+        if (demangled.contains("from_raw_parts") || demangled.contains("from_raw"))
+        {
             return UnsafeDropToken::UNSAFE_CONSTRUCT;
         }
-        if (F.contains("drop_in_place")) {
+        if (demangled.contains("drop_in_place"))
+        {
             return UnsafeDropToken::DROP;
         }
         return UnsafeDropToken::USE;
@@ -225,19 +270,15 @@ namespace psr
     bool UnsafeDropStateDescription::isFactoryFunction(llvm::StringRef F) const
     {
         // TODO: implement
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isFactoryFunction");
-        // return false;
         // TODO: implement better heuristics and correct methods to model
         PHASAR_LOG_LEVEL(DEBUG, "isFactoryFunction: " << F);
         return funcNameToToken(F) == UnsafeDropToken::GET_PTR;
-        //return F.contains("new") || F.contains("from") || F.contains("with_capacity");
+        // return F.contains("new") || F.contains("from") || F.contains("with_capacity");
     }
 
     bool UnsafeDropStateDescription::isConsumingFunction(llvm::StringRef F) const
     {
         // TODO: implement
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isConsumingFunction");
-        // return false;
         PHASAR_LOG_LEVEL(DEBUG, "isConsumingFunction: " << F);
         return true;
     }
@@ -249,25 +290,21 @@ namespace psr
         // return F.contains("drop_in_place") || F.contains("from_raw_parts") || F.contains("into_raw_parts");
         // return funcNameToToken(F) != UnsafeDropToken::STAR;
         return true;
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::isAPIFunction");
     }
 
     UnsafeDropState
     UnsafeDropStateDescription::getNextState(llvm::StringRef Tok,
                                              UnsafeDropState S) const
     {
-        PHASAR_LOG_LEVEL(DEBUG, "getNextState: " << Tok << " , " << to_string(S));
-        // TODO: implement
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getNextState");
         auto token = funcNameToToken(Tok);
-        return Delta(token, S);
-        // return UnsafeDropState::BOT;
+        auto next = Delta(token, S);
+        PHASAR_LOG_LEVEL(DEBUG, "getNextState: fun=" << Tok << " token=" << to_string(token) << " state=" << to_string(S) << " next=" << to_string(next));
+        return next;
     }
 
     std::string UnsafeDropStateDescription::getTypeNameOfInterest() const
     {
         // TODO: implement
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getTypeNameOfInterest");
         return "";
     }
 
@@ -276,7 +313,6 @@ namespace psr
     {
         // TODO: implement
         PHASAR_LOG_LEVEL(DEBUG, "getConsumerParamIdx: " << F);
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getConsumerParamIdx");
         return {};
     }
 
@@ -285,7 +321,7 @@ namespace psr
     {
         // TODO: implement
         PHASAR_LOG_LEVEL(DEBUG, "getFactoryParamIdx: " << F);
-        // llvm::report_fatal_error("unimplemented: UnsafeDropStateDescription::getFactoryParamIdx");
+        // TODO: check if sret is used
         return {-1};
     }
 

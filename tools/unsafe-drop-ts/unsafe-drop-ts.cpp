@@ -34,7 +34,7 @@ int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
-  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+  Logger::initializeStderrLogger(psr::SeverityLevel::DEBUG);
 
   if (int err = usage(argc, argv)) {
     return err;
