@@ -36,20 +36,15 @@ namespace psr
         switch (Token)
         {
         case UnsafeDropToken::STAR:
-            return "STAR";
-            break;
+            return "UnsafeDropToken::STAR";
         case UnsafeDropToken::GET_PTR:
-            return "GET_PTR";
-            break;
+            return "UnsafeDropToken::GET_PTR";
         case UnsafeDropToken::UNSAFE_CONSTRUCT:
-            return "UNSAFE_CONSTRUCT";
-            break;
+            return "UnsafeDropToken::UNSAFE_CONSTRUCT";
         case UnsafeDropToken::DROP:
-            return "DROP";
-            break;
+            return "UnsafeDropToken::DROP";
         case UnsafeDropToken::USE:
-            return "USE";
-            break;
+            return "UnsafeDropToken::USE";
         }
         llvm::report_fatal_error("received unknown token!");
     }
@@ -58,34 +53,32 @@ namespace psr
     {
         switch (State)
         {
-        case UnsafeDropState::TOP:
-            return "TOP";
-            break;
-        case UnsafeDropState::UNINIT:
-            return "UNINIT";
-            break;
-        case UnsafeDropState::GET_PTR:
-            return "GET_PTR";
-            break;
-        case UnsafeDropState::UNSAFE_CONSTRUCT:
-            return "UNSAFE_CONSTRUCT";
-            break;
-        case UnsafeDropState::DROP:
-            return "DROP";
-            break;
-        case UnsafeDropState::USE:
-            return "USE";
-            break;
-        case UnsafeDropState::ERROR:
-            return "ERROR";
-            break;
         case UnsafeDropState::BOT:
-            return "BOT";
-            break;
+            return "UnsafeDropState::BOT";
+        case UnsafeDropState::UNINIT:
+            return "UnsafeDropState::UNINIT";
+        case UnsafeDropState::RAW_REFERENCED:
+            return "UnsafeDropState::RAW_REFERENCED";
+        case UnsafeDropState::RAW_WRAPPED:
+            return "UnsafeDropState::RAW_WRAPPED";
+        case UnsafeDropState::DROPPED:
+            return "UnsafeDropState::DROPPED";
+        case UnsafeDropState::USED:
+            return "UnsafeDropState::USED";
+        case UnsafeDropState::UAF_ERROR:
+            return "UnsafeDropState::UAF_ERROR";
+        case UnsafeDropState::DF_ERROR:
+            return "UnsafeDropState::DF_ERROR";
+        case UnsafeDropState::TS_ERROR:
+            return "UnsafeDropState::TS_ERROR";
+        case UnsafeDropState::TOP:
+            return "UnsafeDropState::TOP";
         }
 
         llvm::report_fatal_error("received unknown state!");
     }
+
+
 
     UnsafeDropState Delta(UnsafeDropToken token, UnsafeDropState state)
     {
@@ -94,62 +87,32 @@ namespace psr
         switch (token)
         {
         case UnsafeDropToken::STAR:
-            switch (state)
-            {
-            case UnsafeDropState::BOT:
-                return UnsafeDropState::BOT;
-                break;
-            case UnsafeDropState::UNINIT:
-                return UnsafeDropState::UNINIT;
-                break;
-            case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::GET_PTR;
-                break;
-            case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::UNSAFE_CONSTRUCT;
-                break;
-            case UnsafeDropState::DROP:
-                return UnsafeDropState::DROP;
-                break;
-            case UnsafeDropState::USE:
-                return UnsafeDropState::USE;
-                break;
-            case UnsafeDropState::ERROR:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::TOP:
-                return UnsafeDropState::TOP;
-                break;
-            }
-            llvm::report_fatal_error("received unknown state!");
-            break;
+            // identity
+            return state;
         case UnsafeDropToken::GET_PTR:
             switch (state)
             {
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
-                break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::GET_PTR;
+                return UnsafeDropState::RAW_REFERENCED;
+            case UnsafeDropState::RAW_REFERENCED:
+                return UnsafeDropState::RAW_REFERENCED;
+            case UnsafeDropState::RAW_WRAPPED:
+                return UnsafeDropState::RAW_WRAPPED;
+            case UnsafeDropState::DROPPED:
+                return UnsafeDropState::UAF_ERROR;
                 break;
-            case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::DROP:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::USE:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::ERROR:
-                return UnsafeDropState::ERROR;
-                break;
+            case UnsafeDropState::USED:
+                return UnsafeDropState::USED;
+            case UnsafeDropState::UAF_ERROR:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::DF_ERROR:
+                return UnsafeDropState::DF_ERROR;
+            case UnsafeDropState::TS_ERROR:
+                return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
-                break;
             }
             llvm::report_fatal_error("received unknown state!");
             break;
@@ -158,28 +121,24 @@ namespace psr
             {
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
-                break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::UNSAFE_CONSTRUCT;
-                break;
-            case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::UNSAFE_CONSTRUCT;
-                break;
-            case UnsafeDropState::DROP:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::USE:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::ERROR:
-                return UnsafeDropState::ERROR;
-                break;
+                return UnsafeDropState::TS_ERROR;
+            case UnsafeDropState::RAW_REFERENCED:
+                return UnsafeDropState::RAW_WRAPPED;
+            case UnsafeDropState::RAW_WRAPPED:
+                return UnsafeDropState::RAW_WRAPPED;
+            case UnsafeDropState::DROPPED:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::USED:
+                return UnsafeDropState::USED;
+            case UnsafeDropState::UAF_ERROR:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::DF_ERROR:
+                return UnsafeDropState::DF_ERROR;
+            case UnsafeDropState::TS_ERROR:
+                return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
-                break;
             }
             llvm::report_fatal_error("received unknown state!");
             break;
@@ -188,28 +147,24 @@ namespace psr
             {
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
-                break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::DROP;
-                break;
-            case UnsafeDropState::DROP:
-                return UnsafeDropState::DROP;
-                break;
-            case UnsafeDropState::USE:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::ERROR:
-                return UnsafeDropState::ERROR;
-                break;
+                return UnsafeDropState::TS_ERROR;
+            case UnsafeDropState::RAW_REFERENCED:
+                return UnsafeDropState::DROPPED;
+            case UnsafeDropState::RAW_WRAPPED:
+                return UnsafeDropState::DROPPED;
+            case UnsafeDropState::DROPPED:
+                return UnsafeDropState::DF_ERROR;
+            case UnsafeDropState::USED:
+                return UnsafeDropState::DROPPED;
+            case UnsafeDropState::UAF_ERROR:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::DF_ERROR:
+                return UnsafeDropState::DF_ERROR;
+            case UnsafeDropState::TS_ERROR:
+                return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
-                break;
             }
             llvm::report_fatal_error("received unknown state!");
             break;
@@ -218,28 +173,24 @@ namespace psr
             {
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
-                break;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::ERROR;
-                break;
-            case UnsafeDropState::GET_PTR:
-                return UnsafeDropState::GET_PTR;
-                break;
-            case UnsafeDropState::UNSAFE_CONSTRUCT:
-                return UnsafeDropState::USE;
-                break;
-            case UnsafeDropState::DROP:
-                return UnsafeDropState::USE;
-                break;
-            case UnsafeDropState::USE:
-                return UnsafeDropState::USE;
-                break;
-            case UnsafeDropState::ERROR:
-                return UnsafeDropState::ERROR;
-                break;
+                return UnsafeDropState::TS_ERROR;
+            case UnsafeDropState::RAW_REFERENCED:
+                return UnsafeDropState::USED;
+            case UnsafeDropState::RAW_WRAPPED:
+                return UnsafeDropState::USED;
+            case UnsafeDropState::DROPPED:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::USED:
+                return UnsafeDropState::USED;
+            case UnsafeDropState::UAF_ERROR:
+                return UnsafeDropState::UAF_ERROR;
+            case UnsafeDropState::DF_ERROR:
+                return UnsafeDropState::DF_ERROR;
+            case UnsafeDropState::TS_ERROR:
+                return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::TOP:
                 return UnsafeDropState::TOP;
-                break;
             }
             llvm::report_fatal_error("received unknown state!");
             break;

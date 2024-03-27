@@ -30,15 +30,32 @@ namespace psr
     {
         BOT = 0,
         UNINIT = 1,
-        GET_PTR = 2,
-        UNSAFE_CONSTRUCT = 3,
-        DROP = 4,
-        USE = 5,
-        ERROR = 6,
+        RAW_REFERENCED = 2,
+        RAW_WRAPPED = 3,
+        DROPPED = 4,
+        USED = 5,
+        UAF_ERROR = 6,
+        DF_ERROR = 7,
+        TS_ERROR = UINT8_MAX - 1,
         TOP = UINT8_MAX,
     };
 
     llvm::StringRef to_string(UnsafeDropState State) noexcept;
+
+    /**
+     * The transition tokens of the Finite State machine, i.e. the functions called.
+     * The STAR token represents all API that are not relevant.
+     */
+    enum class UnsafeDropToken : uint8_t
+    {
+        STAR = 0,
+        GET_PTR = 1,
+        UNSAFE_CONSTRUCT = 2,
+        DROP = 3,
+        USE = 4,
+    };
+
+    llvm::StringRef to_string(UnsafeDropToken Token) noexcept;
 
     /**
      * Lattice implementation for UnsafeDropState,
@@ -100,46 +117,14 @@ namespace psr
         [[nodiscard]] std::set<int>
         getFactoryParamIdx(llvm::StringRef F) const override;
 
-        [[nodiscard]] TypeStateDescription::State bottom() const override
-        {
-            return UnsafeDropState::BOT;
-        }
-
-        [[nodiscard]] TypeStateDescription::State top() const override
-        {
-            return UnsafeDropState::TOP;
-        }
-
-        [[nodiscard]] TypeStateDescription::State uninit() const override
-        {
-            return UnsafeDropState::UNINIT;
-        }
-
-        [[nodiscard]] TypeStateDescription::State start() const override
-        {
-            return UnsafeDropState::GET_PTR;
-        }
-
-        [[nodiscard]] TypeStateDescription::State error() const override
-        {
-            return UnsafeDropState::ERROR;
-        }
+        [[nodiscard]] TypeStateDescription::State bottom() const override { return UnsafeDropState::BOT; }
+        [[nodiscard]] TypeStateDescription::State top() const override { return UnsafeDropState::TOP; }
+        [[nodiscard]] TypeStateDescription::State uninit() const override { return UnsafeDropState::UNINIT; }
+        [[nodiscard]] TypeStateDescription::State start() const override { return UnsafeDropState::RAW_REFERENCED; }
+        [[nodiscard]] TypeStateDescription::State error() const override { return UnsafeDropState::TS_ERROR; }
     }; // class UnsafeDropStateDescription
 
     extern template class IDETypeStateAnalysis<UnsafeDropStateDescription>;
-
-    /**
-     * The transition tokens of the Finite State machine, i.e. the functions called.
-     * The STAR token represents all API that are not relevant.
-     */
-    enum class UnsafeDropToken : uint8_t
-    {
-        STAR = 0,
-        GET_PTR = 1,
-        UNSAFE_CONSTRUCT = 2,
-        DROP = 3,
-        USE = 4,
-    };
 
 } // namespace psr
 
