@@ -78,12 +78,8 @@ namespace psr
         llvm::report_fatal_error("received unknown state!");
     }
 
-
-
     UnsafeDropState Delta(UnsafeDropToken token, UnsafeDropState state)
     {
-        // llvm::report_fatal_error("UnsafeDropStateDeltaFn unimplemented!");
-        //  TODO: add correct transition destinations
         switch (token)
         {
         case UnsafeDropToken::STAR:
@@ -198,80 +194,118 @@ namespace psr
         llvm::report_fatal_error("received unknown token!");
     }
 
-    UnsafeDropToken funcNameToToken(llvm::StringRef F)
-    {
-        //std::string s = rustc_demangle_string(F);
-        //auto demangled = llvm::StringRef(s);
-        auto demangled = F;
-        // TODO: implement
-        if (demangled.contains("into_raw_parts") || demangled.contains("as_mut_ptr"))
-        {
-            return UnsafeDropToken::GET_PTR;
-        }
-        if (demangled.contains("from_raw_parts") || demangled.contains("from_raw"))
-        {
-            return UnsafeDropToken::UNSAFE_CONSTRUCT;
-        }
-        if (demangled.contains("drop_in_place"))
-        {
-            return UnsafeDropToken::DROP;
-        }
-        return UnsafeDropToken::USE;
-    }
-
     struct FnInfo
     {
         bool is_factory_fn;
         std::set<int> factory_param_idxs;
         std::set<int> consumer_param_idxs;
+        UnsafeDropToken token;
     };
 
     const llvm::StringMap<FnInfo> &getInterestingFns() noexcept
     {
+        // TODO: add more interesting functions that match the substring checks of funcNameToToken
         // Return value is modeled as -1
         static const llvm::StringMap<FnInfo> InterestingFns = {
-            {"<str>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}}},
-            {"<alloc::vec::Vec<u8>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}}},
-            // how to handle sret?
-            {"<alloc::vec::Vec<u8>>::from_raw_parts", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0,1}}},
-            {"core::ptr::drop_in_place::<alloc::string::String>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}}},
-            {"core::ptr::drop_in_place::<alloc::vec::Vec<u8>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}}},
+            {"<alloc::raw_vec::RawVec<i32> as core::ops::drop::Drop>::drop", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"<alloc::raw_vec::RawVec<u8> as core::ops::drop::Drop>::drop", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"<alloc::vec::Vec<f32>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
+            {"<alloc::vec::Vec<f32>>::from_raw_parts", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
+            {"<alloc::vec::Vec<i32>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
+            {"<alloc::vec::Vec<u8>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
+            {"<alloc::vec::Vec<u8>>::from_raw_parts", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
+            {"<str>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
+            {"core::ptr::drop_in_place::<alloc::raw_vec::RawVec<f32>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"core::ptr::drop_in_place::<alloc::raw_vec::RawVec<u8>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"core::ptr::drop_in_place::<alloc::string::String>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"core::ptr::drop_in_place::<alloc::vec::Vec<u8>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"core::slice::raw::from_raw_parts_mut::<u8>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
+            {"core::slice::raw::from_raw_parts::<f32>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
         };
         return InterestingFns;
     }
 
+    FnInfo getFnInfo(llvm::StringRef F, HelperAnalyses &HA)
+    {
+        // first check if there is a concrete function that matches the function name
+        auto fns = getInterestingFns();
+        if (fns.count(F))
+        {
+            return fns.lookup(F);
+        }
+
+        // next, try to guess a function signature
+        if (F.contains("into_raw_parts") || F.contains("as_mut_ptr"))
+        {
+            return FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR};
+        }
+        if (F.contains("from_raw_parts") || F.contains("from_raw"))
+        {
+            return FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT};
+        }
+        if (F.contains("drop_in_place") || F.contains("core::ops::drop::Drop"))
+        {
+            return FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP};
+        }
+
+        // TODO: F is already demangled here and can therefore not be found in the IRDB sometimes
+        auto fn = HA.getProjectIRDB().getFunction(F);
+        if (!fn)
+        {
+            PHASAR_LOG_LEVEL(DEBUG, "warning: lookup of function failed, F=" << F);
+            return FnInfo{
+                .is_factory_fn = false,
+                .factory_param_idxs = {},
+                .consumer_param_idxs = {},
+                .token = UnsafeDropToken::STAR,
+            };
+        }
+
+        // fall back to a USE token
+        auto consumer_param_idxs = std::set<int>();
+        for (auto x = 0; x < fn->arg_size(); ++x)
+        {
+            consumer_param_idxs.emplace(x);
+        }
+        return FnInfo{
+            .is_factory_fn = false,
+            .factory_param_idxs = {},
+            .consumer_param_idxs = consumer_param_idxs,
+            .token = UnsafeDropToken::USE,
+        };
+    }
+
+    UnsafeDropToken funcNameToToken(llvm::StringRef F, HelperAnalyses &HA)
+    {
+        return getFnInfo(F, HA).token;
+    }
+
     bool UnsafeDropStateDescription::isFactoryFunction(llvm::StringRef F) const
     {
-        // TODO: implement better heuristics and correct methods to model
         PHASAR_LOG_LEVEL(DEBUG, "isFactoryFunction: " << F);
-        if (isAPIFunction(F)) {
-            return getInterestingFns().lookup(F).is_factory_fn;
-        }
-        return funcNameToToken(F) == UnsafeDropToken::GET_PTR;
+
+        auto fnInfo = getFnInfo(F, this->HA);
+        return fnInfo.is_factory_fn || fnInfo.token == UnsafeDropToken::GET_PTR;
     }
 
     bool UnsafeDropStateDescription::isConsumingFunction(llvm::StringRef F) const
     {
-        // TODO: implement
         PHASAR_LOG_LEVEL(DEBUG, "isConsumingFunction: " << F);
-        if (isAPIFunction(F)) {
-            return !getInterestingFns().lookup(F).is_factory_fn;
-        }
-        return true;
+        auto fnInfo = getFnInfo(F, this->HA);
+        return !fnInfo.is_factory_fn;
     }
 
     bool UnsafeDropStateDescription::isAPIFunction(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "isAPIFunction: " << F);
-        // TODO: implement better heuristics and correct methods to model
-        return getInterestingFns().count(F);
+        return true;
     }
 
     UnsafeDropState
     UnsafeDropStateDescription::getNextState(llvm::StringRef Tok,
                                              UnsafeDropState S) const
     {
-        auto token = funcNameToToken(Tok);
+        auto token = funcNameToToken(Tok, this->HA);
         auto next = Delta(token, S);
         PHASAR_LOG_LEVEL(DEBUG, "getNextState: fun=" << Tok << " token=" << to_string(token) << " state=" << to_string(S) << " next=" << to_string(next));
         return next;
@@ -287,10 +321,8 @@ namespace psr
     UnsafeDropStateDescription::getConsumerParamIdx(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "getConsumerParamIdx: " << F);
-        if (isAPIFunction(F)) {
-            return getInterestingFns().lookup(F).consumer_param_idxs;
-        }
-        return {};
+        auto fnInfo = getFnInfo(F, this->HA);
+        return fnInfo.consumer_param_idxs;
     }
 
     std::set<int>
@@ -298,10 +330,8 @@ namespace psr
     {
         PHASAR_LOG_LEVEL(DEBUG, "getFactoryParamIdx: " << F);
         // TODO: check if sret is used
-        if (isAPIFunction(F)) {
-            return getInterestingFns().lookup(F).factory_param_idxs;
-        }
-        return {-1};
+        auto fnInfo = getFnInfo(F, this->HA);
+        return fnInfo.factory_param_idxs;
     }
 
 } // namespace psr
