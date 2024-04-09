@@ -12,20 +12,47 @@
 namespace psr
 {
 
+    class DemangledLookup
+    {
+    private:
+        HelperAnalyses &HA;
+        llvm::StringMap<const llvm::Function *> Map;
+
+    public:
+        DemangledLookup(HelperAnalyses &HA)
+            : HA(HA),
+              Map(llvm::StringMap<const llvm::Function *>())
+        {
+            for (const auto F : HA.getProjectIRDB().getAllFunctions())
+            {
+                const auto demangled = llvm::demangle(F->getName().str());
+                this->Map.insert(std::make_pair(llvm::StringRef(demangled), F));
+            }
+        }
+        std::optional<const llvm::Function *> lookup(llvm::StringRef Demangled) const
+        {
+            if (this->Map.count(Demangled))
+            {
+                return this->Map.lookup(Demangled);
+            }
+            return std::nullopt;
+        }
+    }; // class DemangledLookup
+
     /**
      * The states of the Finite State Machine,
      * forming a flat lattice.
      *
      *                          BOT = all information is possible
      *
-     * UNINIT    GET_PTR    UNSAFE_CONSTRUCT    DROP    USE    ERROR
+     * UNINIT    RAW_REFERENCED    RAW_WRAPPED    DROP    USE   UAF_ERROR   DF_ERROR   ERROR
      *
      *                          TOP = no information is avilable
      *
      * Note that TOP and BOT are revesed in all of PhASAR.
+     *
+     * UAF and DF errors are not really errors in the senseof TS analysis but the patterns we want to detect
      */
-    // TODO: add more destinct "error" cases for UAF and DF as they
-    // are not really errors in this sense but the patterns we want to detect
     enum class UnsafeDropState : uint8_t
     {
         BOT = 0,
@@ -91,29 +118,56 @@ namespace psr
     class UnsafeDropStateDescription
         : public TypeStateDescription<UnsafeDropState>
     {
+    public:
+        struct FnInfo
+        {
+            bool is_factory_fn;
+            std::set<int> factory_param_idxs;
+            std::set<int> consumer_param_idxs;
+            UnsafeDropToken token;
+        };
+
     private:
         HelperAnalyses &HA;
+        bool unsafe_construct_as_factory;
+        DemangledLookup demangled_lookup;
+        UnsafeDropStateDescription::FnInfo getFnInfo(llvm::StringRef F) const;
+        UnsafeDropToken funcNameToToken(llvm::StringRef F) const;
 
     public:
-        UnsafeDropStateDescription(HelperAnalyses &HA) : HA(HA) {}
+        UnsafeDropStateDescription(HelperAnalyses &HA)
+            : UnsafeDropStateDescription(HA, false) {}
+
+        UnsafeDropStateDescription(HelperAnalyses &HA, bool unsafe_construct_as_factory)
+            : HA(HA),
+              unsafe_construct_as_factory(unsafe_construct_as_factory),
+              demangled_lookup(DemangledLookup(HA))
+        {
+        }
 
         using TypeStateDescription::getNextState;
 
+        // NOTE: F is an already demangled function name
         [[nodiscard]] bool isFactoryFunction(llvm::StringRef F) const override;
 
+        // NOTE: F is an already demangled function name
         [[nodiscard]] bool isConsumingFunction(llvm::StringRef F) const override;
 
+        // NOTE: F is an already demangled function name
         [[nodiscard]] bool isAPIFunction(llvm::StringRef F) const override;
 
+        // NOTE: Tok is an already demangled function name
         [[nodiscard]] TypeStateDescription::State
         getNextState(llvm::StringRef Tok,
                      TypeStateDescription::State S) const override;
 
         [[nodiscard]] std::string getTypeNameOfInterest() const override;
 
+        // NOTE: F is an already demangled function name
         [[nodiscard]] std::set<int>
         getConsumerParamIdx(llvm::StringRef F) const override;
 
+        // NOTE: F is an already demangled function name
         [[nodiscard]] std::set<int>
         getFactoryParamIdx(llvm::StringRef F) const override;
 

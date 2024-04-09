@@ -78,7 +78,7 @@ namespace psr
         llvm::report_fatal_error("received unknown state!");
     }
 
-    UnsafeDropState Delta(UnsafeDropToken token, UnsafeDropState state)
+    UnsafeDropState Delta(UnsafeDropToken token, UnsafeDropState state, bool unsafe_construct_as_factory)
     {
         switch (token)
         {
@@ -98,7 +98,6 @@ namespace psr
                 return UnsafeDropState::RAW_WRAPPED;
             case UnsafeDropState::DROPPED:
                 return UnsafeDropState::UAF_ERROR;
-                break;
             case UnsafeDropState::USED:
                 return UnsafeDropState::USED;
             case UnsafeDropState::UAF_ERROR:
@@ -118,7 +117,25 @@ namespace psr
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
             case UnsafeDropState::UNINIT:
-                return UnsafeDropState::TS_ERROR;
+
+                /*
+
+                    as a second analysis ot overcome the limitation that not all functions are called in the same object
+                    but some are called on the original and some are called on the wrapped object
+                    - adapt this transition to be RAW_WRAPPED
+                    - allow UNSAFE_CONSTRUCT functions to be factory functions
+                    then run both the original analysis and the second and check if statement
+                        that calls a UNSAFE_CONSTRUCT function has a dataflow fact that is RAW_REFERENCED and uses it as an argument
+                */
+
+                if (unsafe_construct_as_factory)
+                {
+                    return UnsafeDropState::RAW_WRAPPED;
+                }
+                else
+                {
+                    return UnsafeDropState::TS_ERROR;
+                }
             case UnsafeDropState::RAW_REFERENCED:
                 return UnsafeDropState::RAW_WRAPPED;
             case UnsafeDropState::RAW_WRAPPED:
@@ -194,13 +211,7 @@ namespace psr
         llvm::report_fatal_error("received unknown token!");
     }
 
-    struct FnInfo
-    {
-        bool is_factory_fn;
-        std::set<int> factory_param_idxs;
-        std::set<int> consumer_param_idxs;
-        UnsafeDropToken token;
-    };
+    typedef UnsafeDropStateDescription::FnInfo FnInfo;
 
     const llvm::StringMap<FnInfo> &getInterestingFns() noexcept
     {
@@ -225,13 +236,22 @@ namespace psr
         return InterestingFns;
     }
 
-    FnInfo getFnInfo(llvm::StringRef F, HelperAnalyses &HA)
+    FnInfo UnsafeDropStateDescription::getFnInfo(llvm::StringRef F) const
     {
+        // overwrite the is_facory_fn and factory_param_idxs if token == UnsafeDropToken::UNSAFE_CONSTRUCT}
+
         // first check if there is a concrete function that matches the function name
         auto fns = getInterestingFns();
         if (fns.count(F))
         {
-            return fns.lookup(F);
+            FnInfo Ret = fns.lookup(F);
+            if (Ret.token == UnsafeDropToken::UNSAFE_CONSTRUCT && this->unsafe_construct_as_factory)
+            {
+                Ret.is_factory_fn = true;
+                // TODO: how to handle sret?
+                Ret.factory_param_idxs = {-1};
+            }
+            return Ret;
         }
 
         // next, try to guess a function signature
@@ -241,7 +261,14 @@ namespace psr
         }
         if (F.contains("from_raw_parts") || F.contains("from_raw"))
         {
-            return FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT};
+            FnInfo Ret = FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT};
+            if (Ret.token == UnsafeDropToken::UNSAFE_CONSTRUCT && this->unsafe_construct_as_factory)
+            {
+                Ret.is_factory_fn = true;
+                // TODO: how to handle sret?
+                Ret.factory_param_idxs = {-1};
+            }
+            return Ret;
         }
         if (F.contains("drop_in_place") || F.contains("core::ops::drop::Drop"))
         {
@@ -249,10 +276,10 @@ namespace psr
         }
 
         // TODO: F is already demangled here and can therefore not be found in the IRDB sometimes
-        auto fn = HA.getProjectIRDB().getFunction(F);
+        auto fn = this->HA.getProjectIRDB().getFunction(F);
         if (!fn)
         {
-            PHASAR_LOG_LEVEL(DEBUG, "warning: lookup of function failed, F=" << F);
+            PHASAR_LOG_LEVEL(DEBUG, "warning: getFnInfo: lookup of function failed, falling back to STAR Token, F=" << F);
             return FnInfo{
                 .is_factory_fn = false,
                 .factory_param_idxs = {},
@@ -275,23 +302,23 @@ namespace psr
         };
     }
 
-    UnsafeDropToken funcNameToToken(llvm::StringRef F, HelperAnalyses &HA)
+    UnsafeDropToken UnsafeDropStateDescription::funcNameToToken(llvm::StringRef F) const
     {
-        return getFnInfo(F, HA).token;
+        return this->getFnInfo(F).token;
     }
 
     bool UnsafeDropStateDescription::isFactoryFunction(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "isFactoryFunction: " << F);
 
-        auto fnInfo = getFnInfo(F, this->HA);
+        auto fnInfo = this->getFnInfo(F);
         return fnInfo.is_factory_fn || fnInfo.token == UnsafeDropToken::GET_PTR;
     }
 
     bool UnsafeDropStateDescription::isConsumingFunction(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "isConsumingFunction: " << F);
-        auto fnInfo = getFnInfo(F, this->HA);
+        auto fnInfo = this->getFnInfo(F);
         return !fnInfo.is_factory_fn;
     }
 
@@ -305,8 +332,8 @@ namespace psr
     UnsafeDropStateDescription::getNextState(llvm::StringRef Tok,
                                              UnsafeDropState S) const
     {
-        auto token = funcNameToToken(Tok, this->HA);
-        auto next = Delta(token, S);
+        auto token = this->funcNameToToken(Tok);
+        auto next = Delta(token, S, this->unsafe_construct_as_factory);
         PHASAR_LOG_LEVEL(DEBUG, "getNextState: fun=" << Tok << " token=" << to_string(token) << " state=" << to_string(S) << " next=" << to_string(next));
         return next;
     }
@@ -321,7 +348,7 @@ namespace psr
     UnsafeDropStateDescription::getConsumerParamIdx(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "getConsumerParamIdx: " << F);
-        auto fnInfo = getFnInfo(F, this->HA);
+        auto fnInfo = this->getFnInfo(F);
         return fnInfo.consumer_param_idxs;
     }
 
@@ -329,8 +356,31 @@ namespace psr
     UnsafeDropStateDescription::getFactoryParamIdx(llvm::StringRef F) const
     {
         PHASAR_LOG_LEVEL(DEBUG, "getFactoryParamIdx: " << F);
-        // TODO: check if sret is used
-        auto fnInfo = getFnInfo(F, this->HA);
+        auto fnInfo = this->getFnInfo(F);
+        if (fnInfo.is_factory_fn)
+        {
+            auto fn_opt = this->demangled_lookup.lookup(F);
+            if (!fn_opt.has_value())
+            {
+                PHASAR_LOG_LEVEL(DEBUG, "Warning: getFactoryParamIdx: DemangledLookup::lookup failed for F=" << F);
+            }
+            // try to handle sret if we can get the information
+            if (fn_opt.has_value())
+            {
+                auto fn = fn_opt.value();
+                int arg_num = 0;
+                for (auto &arg : fn->args())
+                {
+                    // check if sret is used
+                    if (arg.hasStructRetAttr())
+                    {
+                        PHASAR_LOG_LEVEL(DEBUG, "getFactoryParamIdx: Setting sret arg as factory param F=" << F << " arg_num=" << arg_num);
+                        fnInfo.factory_param_idxs.emplace(arg_num);
+                    }
+                    arg_num++;
+                }
+            }
+        }
         return fnInfo.factory_param_idxs;
     }
 
