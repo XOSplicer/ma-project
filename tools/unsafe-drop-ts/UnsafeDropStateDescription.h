@@ -12,6 +12,10 @@
 namespace psr
 {
 
+    /**
+     * Reverse lookup map of mangled names to function definitions.
+     * Computed for all functions in the LLVM IR.
+     */
     class DemangledLookup
     {
     private:
@@ -19,6 +23,9 @@ namespace psr
         llvm::StringMap<const llvm::Function *> Map;
 
     public:
+        /**
+         * Constructor to build the reverse lookup table from the HelperAnalysis
+         */
         DemangledLookup(HelperAnalyses &HA)
             : HA(HA),
               Map(llvm::StringMap<const llvm::Function *>())
@@ -29,6 +36,11 @@ namespace psr
                 this->Map.insert(std::make_pair(llvm::StringRef(demangled), F));
             }
         }
+
+        /**
+         * Try to lookup a demangled function name.
+         * If found returns the function definition.
+         */
         std::optional<const llvm::Function *> lookup(llvm::StringRef Demangled) const
         {
             if (this->Map.count(Demangled))
@@ -38,6 +50,13 @@ namespace psr
             return std::nullopt;
         }
     }; // class DemangledLookup
+
+    // template parameter to specialize which lattice implementation is used
+    enum class UnsafeDropStateLatticeKind
+    {
+        FLAT,
+        VERTICAL
+    };
 
     /**
      * The states of the Finite State Machine,
@@ -53,19 +72,28 @@ namespace psr
      *
      * UAF and DF errors are not really errors in the senseof TS analysis but the patterns we want to detect
      */
-    enum class UnsafeDropState : uint8_t
+    template <UnsafeDropStateLatticeKind LK>
+    class UnsafeDropState_Wrapper
     {
-        BOT = 0,
-        UNINIT = 1,
-        RAW_REFERENCED = 2,
-        RAW_WRAPPED = 3,
-        DROPPED = 4,
-        USED = 5,
-        UAF_ERROR = 6,
-        DF_ERROR = 7,
-        TS_ERROR = UINT8_MAX - 1,
-        TOP = UINT8_MAX,
+    public:
+        enum class UnsafeDropState : int8_t
+        {
+            TS_ERROR = -1,
+            TOP = 0,
+            UNINIT = 1,
+            RAW_REFERENCED = 2,
+            RAW_WRAPPED = 3,
+            USED = 4,
+            DROPPED = 5,
+            UAF_ERROR = 6,
+            DF_ERROR = 7,
+            BOT = INT8_MAX,
+        };
     };
+
+    // switch lattice bahavior by changing the specialization of the wrapper type
+    using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::FLAT>::UnsafeDropState;
+    // using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::VERTICAL>::UnsafeDropState;
 
     llvm::StringRef to_string(UnsafeDropState State) noexcept;
 
@@ -90,16 +118,10 @@ namespace psr
      *
      */
     template <>
-    struct JoinLatticeTraits<UnsafeDropState>
+    struct JoinLatticeTraits<UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::FLAT>::UnsafeDropState>
     {
-        static constexpr UnsafeDropState top() noexcept
-        {
-            return UnsafeDropState::TOP;
-        }
-        static constexpr UnsafeDropState bottom() noexcept
-        {
-            return UnsafeDropState::BOT;
-        }
+        static constexpr UnsafeDropState top() noexcept { return UnsafeDropState::TOP; }
+        static constexpr UnsafeDropState bottom() noexcept { return UnsafeDropState::BOT; }
         static constexpr UnsafeDropState join(UnsafeDropState L,
                                               UnsafeDropState R) noexcept
         {
@@ -112,6 +134,23 @@ namespace psr
                 return L;
             }
             return bottom();
+        }
+    };
+
+    /**
+     * Lattice implementation for UnsafeDropState,
+     * forming a vertical lattice.
+     *
+     */
+    template <>
+    struct JoinLatticeTraits<UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::VERTICAL>::UnsafeDropState>
+    {
+        static constexpr UnsafeDropState top() noexcept { return UnsafeDropState::TOP; }
+        static constexpr UnsafeDropState bottom() noexcept { return UnsafeDropState::BOT; }
+        static constexpr UnsafeDropState join(UnsafeDropState L,
+                                              UnsafeDropState R) noexcept
+        {
+            return std::max(L, R);
         }
     };
 
