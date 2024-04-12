@@ -161,6 +161,7 @@ namespace psr
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
             case UnsafeDropState::UNINIT:
+                //return UnsafeDropState::DROPPED;
                 return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::RAW_REFERENCED:
                 return UnsafeDropState::DROPPED;
@@ -187,6 +188,7 @@ namespace psr
             case UnsafeDropState::BOT:
                 return UnsafeDropState::BOT;
             case UnsafeDropState::UNINIT:
+                //return UnsafeDropState::USED;
                 return UnsafeDropState::TS_ERROR;
             case UnsafeDropState::RAW_REFERENCED:
                 return UnsafeDropState::USED;

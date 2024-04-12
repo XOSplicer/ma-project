@@ -76,6 +76,7 @@ namespace psr
     class UnsafeDropState_Wrapper
     {
     public:
+        // enums cant be used as a template, so it is an inner class in a wrapperhehe
         enum class UnsafeDropState : int8_t
         {
             TS_ERROR = -1,
@@ -92,8 +93,8 @@ namespace psr
     };
 
     // switch lattice bahavior by changing the specialization of the wrapper type
-    using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::FLAT>::UnsafeDropState;
-    // using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::VERTICAL>::UnsafeDropState;
+    // using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::FLAT>::UnsafeDropState;
+    using UnsafeDropState = UnsafeDropState_Wrapper<UnsafeDropStateLatticeKind::VERTICAL>::UnsafeDropState;
 
     llvm::StringRef to_string(UnsafeDropState State) noexcept;
 
