@@ -220,6 +220,8 @@ namespace psr
         // TODO: add more interesting functions that match the substring checks of funcNameToToken
         // Return value is modeled as -1
         static const llvm::StringMap<FnInfo> InterestingFns = {
+            {"<alloc::boxed::Box<u32>>::from_raw", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
+            {"<alloc::boxed::Box<u32>>::into_raw", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR }},
             {"<alloc::raw_vec::RawVec<i32> as core::ops::drop::Drop>::drop", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
             {"<alloc::raw_vec::RawVec<u8> as core::ops::drop::Drop>::drop", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
             {"<alloc::vec::Vec<f32>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
@@ -228,6 +230,8 @@ namespace psr
             {"<alloc::vec::Vec<u8>>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
             {"<alloc::vec::Vec<u8>>::from_raw_parts", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0, 1}, .token = UnsafeDropToken::UNSAFE_CONSTRUCT}},
             {"<str>::as_mut_ptr", FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR}},
+            {"core::mem::drop::<alloc::boxed::Box<u32>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
+            {"core::ptr::drop_in_place::<alloc::boxed::Box<u32>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
             {"core::ptr::drop_in_place::<alloc::raw_vec::RawVec<f32>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
             {"core::ptr::drop_in_place::<alloc::raw_vec::RawVec<u8>>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
             {"core::ptr::drop_in_place::<alloc::string::String>", FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP}},
@@ -250,14 +254,14 @@ namespace psr
             if (Ret.token == UnsafeDropToken::UNSAFE_CONSTRUCT && this->unsafe_construct_as_factory)
             {
                 Ret.is_factory_fn = true;
-                // TODO: how to handle sret?
+                // NOTE: sret is handled in getFactoryParamIdx
                 Ret.factory_param_idxs = {-1};
             }
             return Ret;
         }
 
         // next, try to guess a function signature
-        if (F.contains("into_raw_parts") || F.contains("as_mut_ptr"))
+        if (F.contains("into_raw_parts") || F.contains("as_mut_ptr") || F.contains("into_raw"))
         {
             return FnInfo{.is_factory_fn = true, .factory_param_idxs = {-1}, .consumer_param_idxs = {}, .token = UnsafeDropToken::GET_PTR};
         }
@@ -267,12 +271,12 @@ namespace psr
             if (Ret.token == UnsafeDropToken::UNSAFE_CONSTRUCT && this->unsafe_construct_as_factory)
             {
                 Ret.is_factory_fn = true;
-                // TODO: how to handle sret?
+                // NOTE: sret is handled in getFactoryParamIdx
                 Ret.factory_param_idxs = {-1};
             }
             return Ret;
         }
-        if (F.contains("drop_in_place") || F.contains("core::ops::drop::Drop"))
+        if (F.contains("drop_in_place") || F.contains("core::ops::drop::Drop") || F.contains("core::mem::drop"))
         {
             return FnInfo{.is_factory_fn = false, .factory_param_idxs = {}, .consumer_param_idxs = {0}, .token = UnsafeDropToken::DROP};
         }

@@ -42,6 +42,8 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const std::set<UnsafeDropSt
   return OS;
 }
 
+using run_result_t = std::map<const llvm::Value *, std::set<UnsafeDropState>>;
+
 void run_analysis_once(HelperAnalyses &HA, std::vector<std::string> &entrypoints, bool unsafe_construct_as_factory)
 {
 

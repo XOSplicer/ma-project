@@ -8,6 +8,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
         let v1 = Vec::from_raw_parts(ptr, v.len(), v.len());
         // DF
         drop(v1);
+        drop(v);
     }
     return 0;
 }
