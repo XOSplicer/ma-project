@@ -42,36 +42,42 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const std::set<UnsafeDropSt
   return OS;
 }
 
+using ide_result_cells_t = std::vector<psr::Table<const llvm::Instruction *, const llvm::Value *, psr::UnsafeDropState>::Cell>;
 using run_result_t = std::map<const llvm::Value *, std::set<UnsafeDropState>>;
 
-void run_analysis_once(HelperAnalyses &HA, std::vector<std::string> &entrypoints, bool unsafe_construct_as_factory)
+// forward decls
+run_result_t cells_to_run_result(ide_result_cells_t &result_cells);
+run_result_t filter_run_result(run_result_t &run_result);
+
+class RunResult {
+  public:
+    ide_result_cells_t Ide_result_cells;
+    run_result_t Run_result_map;
+    run_result_t Run_result_map_filtered;
+    RunResult(ide_result_cells_t Ide_result_cells)
+      : Ide_result_cells(Ide_result_cells),
+        Run_result_map(cells_to_run_result(Ide_result_cells)),
+        Run_result_map_filtered(filter_run_result(Run_result_map))
+      {};
+
+}; // class RunResult
+
+run_result_t cells_to_run_result(ide_result_cells_t &result_cells)
 {
-
-llvm::outs() << "Creating problem description and solver\n";
-  auto ts_description = UnsafeDropStateDescription(HA, unsafe_construct_as_factory);
-  auto ide_ts_problem = createAnalysisProblem<IDETypeStateAnalysis<UnsafeDropStateDescription>>(HA, &ts_description, entrypoints);
-  auto ide_solver = IDESolver(ide_ts_problem, &HA.getICFG());
-  llvm::outs() << "Solving IDE problem\n";
-  auto ide_results = ide_solver.solve();
-  llvm::outs() << "IDE results:\n\n";
-  ide_results.dumpResults(HA.getICFG());
-
-  llvm::outs() << "Collected results:\n\n";
-  auto result_cells = ide_results.getAllResultEntries();
-  auto result_map = std::map<const llvm::Value *, std::set<UnsafeDropState>>();
+  run_result_t result_map = std::map<const llvm::Value *, std::set<UnsafeDropState>>();
   for (auto cell : result_cells)
   {
     auto llvm_value = cell.getRowKey();
     auto state = cell.getValue();
     result_map[llvm_value].emplace(state);
   }
-  for (auto m : result_map)
-  {
-    llvm::outs() << *m.first << " ==> " << m.second << "\n";
-  }
+  return result_map;
+}
 
+run_result_t filter_run_result(run_result_t &run_result)
+{
   auto result_map_filtered = std::map<const llvm::Value *, std::set<UnsafeDropState>>();
-  for (auto m : result_map)
+  for (auto m : run_result)
   {
     if (!m.second.count(UnsafeDropState::TS_ERROR) &&
         m.second != std::set({UnsafeDropState::BOT}) &&
@@ -81,9 +87,45 @@ llvm::outs() << "Creating problem description and solver\n";
       result_map_filtered.emplace(m.first, m.second);
     }
   }
+  return result_map_filtered;
+}
 
-  llvm::outs() << "\n\n###########\n\nFiltered results:\n\n";
-    for (auto m : result_map_filtered)
+void combine_results(RunResult run_1, RunResult run_2)
+{
+  llvm::outs() << "\n\n###########\n\nCombined run results:\n\n";
+  llvm::report_fatal_error("combine_results: unimplemented");
+  return;
+}
+
+RunResult run_analysis_once(HelperAnalyses &HA, std::vector<std::string> &entrypoints, bool unsafe_construct_as_factory)
+{
+
+  llvm::outs() << "Creating problem description and solver\n";
+  auto ts_description = UnsafeDropStateDescription(HA, unsafe_construct_as_factory);
+  auto ide_ts_problem = createAnalysisProblem<IDETypeStateAnalysis<UnsafeDropStateDescription>>(HA, &ts_description, entrypoints);
+  auto ide_solver = IDESolver(ide_ts_problem, &HA.getICFG());
+  llvm::outs() << "Solving IDE problem\n";
+  auto ide_results = ide_solver.solve();
+  llvm::outs() << "IDE results:\n\n";
+  ide_results.dumpResults(HA.getICFG());
+
+  llvm::outs() << "Collected results:\n\n";
+  ide_result_cells_t result_cells = ide_results.getAllResultEntries();
+
+  auto run_result = RunResult(result_cells);
+
+  for (auto m : run_result.Run_result_map)
+  {
+    llvm::outs() << *m.first << " ==> " << m.second << "\n";
+  }
+
+  return run_result;
+}
+
+void print_run_result(run_result_t &run_result)
+{
+  llvm::outs() << "\n\n###########\n\nFiltered run results:\n\n";
+  for (auto m : run_result)
   {
     llvm::outs() << *m.first << " ==> " << m.second << "\n";
   }
@@ -111,10 +153,20 @@ int main(int argc, const char **argv)
   }
 
   llvm::outs() << "\n\n###########\n\n First Run (unsafe_construct_as_factory=false):\n\n";
-  run_analysis_once(HA, entrypoints, false);
+  auto run_1 = run_analysis_once(HA, entrypoints, false);
+  print_run_result(run_1.Run_result_map_filtered);
 
   llvm::outs() << "\n\n###########\n\n Second Run (unsafe_construct_as_factory=true):\n\n";
-  run_analysis_once(HA, entrypoints, true);
+  auto run_2 = run_analysis_once(HA, entrypoints, true);
+  print_run_result(run_2.Run_result_map_filtered);
+
+  llvm::outs() << "\n\n###########\n\nResults with DF/UAF Errors:\n\n";
+  for (auto m : run_2.Run_result_map_filtered)
+  {
+    if (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR)) {
+      llvm::outs() << *m.first << " ==> " << m.second << "\n";
+    }
+  }
 
   return 0;
 }
