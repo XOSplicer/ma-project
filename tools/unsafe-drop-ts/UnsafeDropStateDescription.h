@@ -172,6 +172,7 @@ namespace psr
         bool unsafe_construct_as_factory;
         DemangledLookup demangled_lookup;
         UnsafeDropStateDescription::FnInfo getFnInfo(llvm::StringRef F) const;
+    public:
         UnsafeDropToken funcNameToToken(llvm::StringRef F) const;
 
     public:
