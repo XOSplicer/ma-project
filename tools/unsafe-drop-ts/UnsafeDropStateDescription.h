@@ -217,6 +217,11 @@ namespace psr
         [[nodiscard]] TypeStateDescription::State uninit() const override { return UnsafeDropState::UNINIT; }
         [[nodiscard]] TypeStateDescription::State start() const override { return UnsafeDropState::RAW_REFERENCED; }
         [[nodiscard]] TypeStateDescription::State error() const override { return UnsafeDropState::TS_ERROR; }
+
+        [[nodiscard]] virtual DataFlowAnalysisType analysisType() const override
+        {
+            return DataFlowAnalysisType::None;
+        }
     }; // class UnsafeDropStateDescription
 
     extern template class IDETypeStateAnalysis<UnsafeDropStateDescription>;
