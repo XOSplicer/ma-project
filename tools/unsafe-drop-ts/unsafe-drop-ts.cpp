@@ -305,8 +305,55 @@ int main(int argc, const char **argv)
     }
   }
 
-  llvm::outs() << "\n\n###########\n\nCombined results:\n\n";
-  combine_results(HA, run_1, run_2);
+  llvm::outs() << "\n\n###########\n\nResults with DF/UAF Errors that have also been RAW_WRAPPED or RAW_REFERENCED:\n\n";
+  for (auto m : run_2.Run_result_map_filtered)
+  {
+    if (
+      (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR))
+      && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED))
+    )
+    {
+      llvm::outs() << *m.first << " ==> " << m.second << "\n";
+    }
+  }
 
+  // check with values from first run aswell by joining the two runs on the value
+
+  run_result_t merged_result;
+  for (const auto m_1 : run_1.Run_result_map_filtered)
+  {
+    for (const auto s : m_1.second)
+    {
+      // operator[] will default construct an empty set value if not present
+      merged_result[m_1.first].insert(s);
+    }
+  }
+  for (const auto m_2 : run_2.Run_result_map_filtered)
+  {
+    for (const auto s : m_2.second)
+    {
+      // operator[] will default construct an empty set value if not present
+      merged_result[m_2.first].insert(s);
+    }
+  }
+
+    llvm::outs() << "\n\n###########\n\n===Merged=== Results with DF/UAF Errors that have also been RAW_WRAPPED or RAW_REFERENCED:\n\n";
+  for (auto m : run_2.Run_result_map_filtered)
+  {
+    if (
+      (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR))
+      && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED))
+    )
+    {
+      llvm::outs() << *m.first << " ==> " << m.second << "\n";
+    }
+  }
+
+
+  llvm::outs() << "\n\n###########\n\nCombined results:\n\n";
+  llvm::outs() << "(skipped)\n";
+  // combine_results(HA, run_1, run_2);
+
+  llvm::outs() << "Done.\n\n";
   return 0;
 }
