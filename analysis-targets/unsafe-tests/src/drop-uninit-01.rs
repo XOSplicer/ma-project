@@ -8,6 +8,8 @@
 */
 
 #![feature(start)]
+#![allow(deprecated)]
+#![allow(dead_code)]
 
 use std::io::Read;
 use std::mem;
@@ -19,9 +21,10 @@ struct Foo {
 
 impl Foo {
     pub unsafe fn read_from(src: &mut impl Read) -> Foo {
+        #[allow(invalid_value)]
         let mut foo = mem::uninitialized::<Foo>();
         let s = slice::from_raw_parts_mut(&mut foo as *mut _ as *mut u8, mem::size_of::<Foo>());
-        src.read_exact(s);
+        let _ = src.read_exact(s);
         foo
     }
 }

@@ -27,7 +27,7 @@ fn sink(value: u32) -> u32 {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let mut foo = Foo::new();
+    let foo = Foo::new();
     sink(foo.x);
     sink(foo.y[0]);
     return 0;

@@ -15,6 +15,10 @@
 #include <string>
 #include <sstream>
 
+#define DEBUG_IR_FILE "/workspaces/ma-project/build/analysis-targets/unsafe_tests_uaf_slice_01-0083f63475ad221d.ll"
+// #define DEBUG_MODE
+#undef DEBUG_MODE
+
 using namespace psr;
 
 int usage(int argc, const char **argv)
@@ -126,16 +130,26 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
   {
 
     // get run_2 value / state pairs for each instruction, filter by DF/UAF ERROR state
+
     // SEGFAULT happens in this method call
     // auto res_2 = run_2.Ide_results.resultsAtInLLVMSSA(instr, true, true);
     // avoid calling resultsAtInLLVMSSA(instr), as it segfaults
     // maybe instead call resultAtInLLVMSSA(instr) with each of the run_2_error_values
+    // avoid calling resultAtInLLVMSSA, as it also segfaults
+
+    // NOTE: the association of facts to the instruction mithgt be of by one,
+    // as the fact only holds after the instructions that introduced it.
+
     std::unordered_map<const llvm::Value *, UnsafeDropState> res_2_filtered;
-    for (const auto value : run_2_error_values)
+    for (const auto cell : run_2.Ide_result_cells)
     {
-      // FIXME: this method call also SEGFAULTs
-      UnsafeDropState s = run_2.Ide_results.resultAtInLLVMSSA(instr, value);
-      res_2_filtered.emplace(value, s);
+      if (cell.getRowKey() != instr) { continue; }
+      auto llvm_value = cell.getColumnKey();
+      auto state = cell.getValue();
+      if (run_2_error_values.count(llvm_value))
+      {
+        res_2_filtered.emplace(llvm_value, state);
+      }
     }
 
     // get run_1 value / state pairs for each instruction, filter by RAW_WRAPPED state
@@ -143,12 +157,17 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
     // auto res_1 = run_1.Ide_results.resultsAtInLLVMSSA(instr, true, true);
 
     std::unordered_map<const llvm::Value *, UnsafeDropState> res_1_filtered;
-    for (const auto value : run_1_wrapped_values)
+    for (const auto cell : run_1.Ide_result_cells)
     {
-      // FIXME: this method call also SEGFAULTs
-      UnsafeDropState s = run_1.Ide_results.resultAtInLLVMSSA(instr, value);
-      res_1_filtered.emplace(value, s);
+      if (cell.getRowKey() != instr) { continue; }
+      auto llvm_value = cell.getColumnKey();
+      auto state = cell.getValue();
+      if (run_1_wrapped_values.count(llvm_value))
+      {
+        res_1_filtered.emplace(llvm_value, state);
+      }
     }
+
 
     // merge the two sets on the value
     std::unordered_map<const llvm::Value *, llvm::SmallSet<UnsafeDropState, 2>> joined;
@@ -172,29 +191,20 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
       }
     }
 
-    llvm::outs() << "States at instruction: " << *instr << " ==\n==> " << all_states << "\n";
+    // llvm::outs() << "States at instruction: " << *instr << " ==\n==> " << all_states << "\n";
 
-    // TODO: record the error state per value pair???
 
     // TODO: check if RAW_WRAPPED and error states exists at the same instruction of kind unsafeConstruct
     // and RAW_WRAPPED is used as a arg
     // FIXME: should check for arg
 
-    // TODO: do only compute when unsafeConstruct
+    // TODO: do only compute when unsafeConstruct invoke or all instr
     /*
     if (description.funcNameToToken(llvm::demangle(???)) != UnsafeDropToken::UNSAFE_CONSTRUCT)
     {
       continue;
     }
     */
-
-
-    /*
-      for (const auto m : joined)
-      {
-        if (m.)
-      }
-      */
 
     if ((all_states.count(UnsafeDropState::DF_ERROR) || all_states.count(UnsafeDropState::UAF_ERROR)) && all_states.count(UnsafeDropState::RAW_WRAPPED))
     {
@@ -255,13 +265,18 @@ int main(int argc, const char **argv)
   {
     // FIXME: change back after debugging
     PHASAR_LOG_LEVEL(CRITICAL, "error: incorrect usage");
+#ifdef DEBUG_MODE
     PHASAR_LOG_LEVEL(WARNING, "will continue for debug mode");
-    // return err;
+#else
+    return err;
+#endif
   }
 
-  // FIXME: change back after debugging
-  // std::string IRFile = argv[1];
-  std::string IRFile = "/workspaces/ma-project/build/analysis-targets/unsafe_tests_uaf_slice_01-0083f63475ad221d.ll";
+#ifdef DEBUG_MODE
+  std::string IRFile = DEBUG_IR_FILE;
+#else
+  std::string IRFile = argv[1];
+#endif
 
   const std::vector entrypoints = {"main"s};
   HelperAnalyses HA(IRFile, entrypoints);

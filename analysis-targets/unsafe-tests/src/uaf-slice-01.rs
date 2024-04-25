@@ -37,7 +37,7 @@ pub unsafe fn matrix2invert(a: *mut f32) -> *mut u8 {
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
     let m = &mut [2.0f32, 1.0, 7.0, 4.0];
     unsafe {
-        let p = matrix2invert(m as *mut f32);
+        let _p = matrix2invert(m as *mut f32);
         // p is now dangling
     }
     return 0;

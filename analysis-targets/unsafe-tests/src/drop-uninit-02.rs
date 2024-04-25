@@ -8,10 +8,10 @@
 */
 
 #![feature(start)]
+#![allow(dead_code)]
+#![allow(deprecated)]
 
-use std::io::Read;
 use std::mem;
-use std::slice;
 
 struct Foo {
     x: u32
@@ -19,7 +19,7 @@ struct Foo {
 
 impl Foo {
     pub unsafe fn unsafe_new() -> Foo {
-        let mut foo = mem::uninitialized::<Foo>();
+        let foo = mem::uninitialized::<Foo>();
         foo
     }
 }
