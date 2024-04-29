@@ -1,2 +1,4 @@
 add_subdirectory(rustsec-2021-0052)
 add_subdirectory(rustsec-2022-0012)
+add_subdirectory(cve-2020-35891)
+add_subdirectory(cve-2018-20996)
