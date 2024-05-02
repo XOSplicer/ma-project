@@ -1,0 +1,14 @@
+[build]
+rustflags = [
+    "--emit=llvm-ir",
+    "-Cno-prepopulate-passes",
+    "-Csymbol-mangling-version=v0",
+    "-Cdebuginfo=2",
+    "-Clto=off",
+    "-Copt-level=0",
+    "-Cdebug-assertions",
+    "-Coverflow-checks",
+    "-Cno-vectorize-loops",
+    "-Clto=off",
+    "-Cpanic=unwind",
+]

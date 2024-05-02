@@ -1,0 +1,10 @@
+arrow2 0.9.1
+chttp 0.1.2
+crossbeam 0.4.0
+id-map 0.2.1
+id-set 0.2.2
+linked-hash-map 0.5.2
+ordnung 0.0.1
+smallvec 0.6.2
+smallvec 0.6.9
+stretch 0.3.2

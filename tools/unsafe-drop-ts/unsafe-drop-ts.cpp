@@ -221,7 +221,7 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
   return;
 }
 
-RunResult run_analysis_once(HelperAnalyses &HA, const std::vector<std::string> &entrypoints, const bool unsafe_construct_as_factory)
+RunResult run_analysis_once(HelperAnalyses &HA, const std::vector<std::string> &entrypoints, const bool unsafe_construct_as_factory, const bool dump_results)
 {
 
   llvm::outs() << "Creating problem description and solver\n";
@@ -231,7 +231,11 @@ RunResult run_analysis_once(HelperAnalyses &HA, const std::vector<std::string> &
   llvm::outs() << "Solving IDE problem\n";
   auto ide_results = ide_solver.solve();
   llvm::outs() << "IDE results:\n\n";
+  if (dump_results) {
   ide_results.dumpResults(HA.getICFG());
+  } else {
+    llvm::outs() << "(IDE results skipped)\n";
+  }
 
   llvm::outs() << "Collected results:\n\n";
 
@@ -278,23 +282,27 @@ int main(int argc, const char **argv)
   std::string IRFile = argv[1];
 #endif
 
-  const std::vector entrypoints = {"main"s};
+  // const std::vector entrypoints = {"main"s};
+  const std::vector entrypoints = {"__ALL__"s};
   HelperAnalyses HA(IRFile, entrypoints);
 
+  /* skip main check for now
   const auto *F = HA.getProjectIRDB().getFunctionDefinition("main");
   if (!F)
   {
     PHASAR_LOG_LEVEL(CRITICAL, "error: file does not contain a 'main' function!");
     return 1;
-  }
+  }*/
 
   llvm::outs() << "\n\n###########\n\n First Run (unsafe_construct_as_factory=false):\n\n";
-  auto run_1 = run_analysis_once(HA, entrypoints, false);
-  print_run_result(run_1.Run_result_map_filtered);
-
+  auto run_1 = run_analysis_once(HA, entrypoints, false, false);
+  llvm::outs() << "(output skipped)\n";
+  // print_run_result(run_1.Run_result_map_filtered);
   llvm::outs() << "\n\n###########\n\n Second Run (unsafe_construct_as_factory=true):\n\n";
-  auto run_2 = run_analysis_once(HA, entrypoints, true);
-  print_run_result(run_2.Run_result_map_filtered);
+  auto run_2 = run_analysis_once(HA, entrypoints, true, false);
+  llvm::outs() << "(output skipped)\n";
+  // print_run_result(run_2.Run_result_map_filtered);
+
 
   llvm::outs() << "\n\n###########\n\nResults with DF/UAF Errors:\n\n";
   for (auto m : run_2.Run_result_map_filtered)

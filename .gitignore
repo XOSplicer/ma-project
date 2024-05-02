@@ -1,5 +1,9 @@
 ##### ignored directories
 
+experiments/crates
+experiments/bin
+tmp/
+
 target/
 output/
 
