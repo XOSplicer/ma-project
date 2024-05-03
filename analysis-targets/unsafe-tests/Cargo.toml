@@ -29,6 +29,11 @@ path = "src/drop-alias-02.rs"
 name = "unsafe-tests_drop-alias-03"
 path = "src/drop-alias-03.rs"
 
+
+[[bin]]
+name = "unsafe-tests_drop-alias-04"
+path = "src/drop-alias-04.rs"
+
 [[bin]]
 name = "unsafe-tests_drop-uninit-01"
 path = "src/drop-uninit-01.rs"

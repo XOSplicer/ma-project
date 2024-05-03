@@ -7,15 +7,17 @@ RUN apt-get -y update && \
         build-essential \
         cmake \
         curl \
-        git \
         g++ \
+        git \
         libboost-graph-dev \
         libcurl4-openssl-dev \
-        libstdc++6 \
         libsqlite3-dev \
+        libssl-dev \
+        libstdc++6 \
         libxml2 \
         libxml2-dev \
         libz3-dev \
+        pkg-config \
         software-properties-common \
         sqlite3 \
         wget \
