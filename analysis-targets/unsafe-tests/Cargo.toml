@@ -69,6 +69,13 @@ path = "src/uaf-slice-01.rs"
 name = "unsafe-tests_uaf-slice-02"
 path = "src/uaf-slice-02.rs"
 
+[[bin]]
+name = "unsafe-tests_uaf-vec-01"
+path = "src/uaf-vec-01.rs"
+
+[[bin]]
+name = "unsafe-tests_uaf-vec-02"
+path = "src/uaf-vec-02.rs"
 
 [[bin]]
 name = "unsafe-tests_drop-uninit-02"
