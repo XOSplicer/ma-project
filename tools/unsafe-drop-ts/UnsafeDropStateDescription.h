@@ -76,11 +76,11 @@ namespace psr
     class UnsafeDropState_Wrapper
     {
     public:
-        // enums cant be used as a template, so it is an inner class in a wrapperhehe
+        // enums cant be used as a template, so it is an inner class in a wrapper here
         enum class UnsafeDropState : int8_t
         {
-            TS_ERROR = -1,
-            TOP = 0,
+            TOP = INT8_MIN,
+            TS_ERROR = 0,
             UNINIT = 1,
             RAW_REFERENCED = 2,
             RAW_WRAPPED = 3,
