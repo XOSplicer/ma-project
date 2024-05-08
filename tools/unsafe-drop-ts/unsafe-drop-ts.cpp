@@ -21,17 +21,44 @@
 
 using namespace psr;
 
-int usage(int argc, const char **argv)
+void print_usage()
+{
+  llvm::errs() << "unsafe-drop-ts \n"
+                  "A small PhASAR-based program to check for unsafe drops using typestate analysis\n\n"
+                  "Usage: unsafe-drop-ts <LLVM IR file> <FLAGS...>\n"
+                  "FLAGS:\n"
+                  "--help\n"
+                  "--debug-log\n";
+}
+
+struct Opts
+{
+  std::string file;
+  bool debug_log;
+};
+
+int usage(int argc, const char **argv, Opts *out_opts)
 {
   llvm::outs() << "unsafe-drop-ts\n\n";
   if (argc < 2 || !std::filesystem::exists(argv[1]) ||
       std::filesystem::is_directory(argv[1]))
   {
-    llvm::errs() << "unsafe-drop-ts \n"
-                    "A small PhASAR-based program to check for unsafe drops using typestate analysis\n\n"
-                    "Usage: unsafe-drop-ts <LLVM IR file>\n";
+    print_usage();
     return 1;
   }
+  for (int i = 1; i < argc; ++i)
+  {
+    if (std::string(argv[i]) == std::string("--help"))
+    {
+      print_usage();
+      return 1;
+    }
+    if (std::string(argv[i]) == std::string("--debug-log"))
+    {
+      out_opts->debug_log = true;
+    }
+  }
+  out_opts->file = std::string(argv[1]);
   return 0;
 }
 
@@ -143,7 +170,10 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
     std::unordered_map<const llvm::Value *, UnsafeDropState> res_2_filtered;
     for (const auto cell : run_2.Ide_result_cells)
     {
-      if (cell.getRowKey() != instr) { continue; }
+      if (cell.getRowKey() != instr)
+      {
+        continue;
+      }
       auto llvm_value = cell.getColumnKey();
       auto state = cell.getValue();
       if (run_2_error_values.count(llvm_value))
@@ -159,7 +189,10 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
     std::unordered_map<const llvm::Value *, UnsafeDropState> res_1_filtered;
     for (const auto cell : run_1.Ide_result_cells)
     {
-      if (cell.getRowKey() != instr) { continue; }
+      if (cell.getRowKey() != instr)
+      {
+        continue;
+      }
       auto llvm_value = cell.getColumnKey();
       auto state = cell.getValue();
       if (run_1_wrapped_values.count(llvm_value))
@@ -167,7 +200,6 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
         res_1_filtered.emplace(llvm_value, state);
       }
     }
-
 
     // merge the two sets on the value
     std::unordered_map<const llvm::Value *, llvm::SmallSet<UnsafeDropState, 2>> joined;
@@ -192,7 +224,6 @@ void combine_results(HelperAnalyses &HA, const RunResult &run_1, const RunResult
     }
 
     // llvm::outs() << "States at instruction: " << *instr << " ==\n==> " << all_states << "\n";
-
 
     // TODO: check if RAW_WRAPPED and error states exists at the same instruction of kind unsafeConstruct
     // and RAW_WRAPPED is used as a arg
@@ -231,9 +262,12 @@ RunResult run_analysis_once(HelperAnalyses &HA, const std::vector<std::string> &
   llvm::outs() << "Solving IDE problem\n";
   auto ide_results = ide_solver.solve();
   llvm::outs() << "IDE results:\n\n";
-  if (dump_results) {
-  ide_results.dumpResults(HA.getICFG());
-  } else {
+  if (dump_results)
+  {
+    ide_results.dumpResults(HA.getICFG());
+  }
+  else
+  {
     llvm::outs() << "(IDE results skipped)\n";
   }
 
@@ -262,12 +296,10 @@ int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
 
-  // Logger::initializeStderrLogger(psr::SeverityLevel::DEBUG);
-  Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+  Opts opts;
 
-  if (const int err = usage(argc, argv))
+  if (const int err = usage(argc, argv, &opts))
   {
-    // FIXME: change back after debugging
     PHASAR_LOG_LEVEL(CRITICAL, "error: incorrect usage");
 #ifdef DEBUG_MODE
     PHASAR_LOG_LEVEL(WARNING, "will continue for debug mode");
@@ -279,8 +311,17 @@ int main(int argc, const char **argv)
 #ifdef DEBUG_MODE
   std::string IRFile = DEBUG_IR_FILE;
 #else
-  std::string IRFile = argv[1];
+  std::string IRFile = opts.file;
 #endif
+
+  if (opts.debug_log)
+  {
+    Logger::initializeStderrLogger(psr::SeverityLevel::DEBUG);
+  }
+  else
+  {
+    Logger::initializeStderrLogger(psr::SeverityLevel::INFO);
+  }
 
   // const std::vector entrypoints = {"main"s};
   const std::vector entrypoints = {"__ALL__"s};
@@ -295,14 +336,26 @@ int main(int argc, const char **argv)
   }*/
 
   llvm::outs() << "\n\n###########\n\n First Run (unsafe_construct_as_factory=false):\n\n";
-  auto run_1 = run_analysis_once(HA, entrypoints, false, false);
-  llvm::outs() << "(output skipped)\n";
-  // print_run_result(run_1.Run_result_map_filtered);
-  llvm::outs() << "\n\n###########\n\n Second Run (unsafe_construct_as_factory=true):\n\n";
-  auto run_2 = run_analysis_once(HA, entrypoints, true, false);
-  llvm::outs() << "(output skipped)\n";
-  // print_run_result(run_2.Run_result_map_filtered);
+  auto run_1 = run_analysis_once(HA, entrypoints, false, opts.debug_log);
+  if (opts.debug_log)
+  {
+    print_run_result(run_1.Run_result_map_filtered);
+  }
+  else
+  {
+    llvm::outs() << "(output skipped)\n";
+  }
 
+  llvm::outs() << "\n\n###########\n\n Second Run (unsafe_construct_as_factory=true):\n\n";
+  auto run_2 = run_analysis_once(HA, entrypoints, true, opts.debug_log);
+  if (opts.debug_log)
+  {
+    print_run_result(run_2.Run_result_map_filtered);
+  }
+  else
+  {
+    llvm::outs() << "(output skipped)\n";
+  }
 
   llvm::outs() << "\n\n###########\n\nResults with DF/UAF Errors:\n\n";
   for (auto m : run_2.Run_result_map_filtered)
@@ -317,9 +370,7 @@ int main(int argc, const char **argv)
   for (auto m : run_2.Run_result_map_filtered)
   {
     if (
-      (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR))
-      && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED))
-    )
+        (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR)) && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED)))
     {
       llvm::outs() << *m.first << " ==> " << m.second << "\n";
     }
@@ -345,18 +396,15 @@ int main(int argc, const char **argv)
     }
   }
 
-    llvm::outs() << "\n\n###########\n\n===Merged=== Results with DF/UAF Errors that have also been RAW_WRAPPED or RAW_REFERENCED:\n\n";
+  llvm::outs() << "\n\n###########\n\n===Merged=== Results with DF/UAF Errors that have also been RAW_WRAPPED or RAW_REFERENCED:\n\n";
   for (auto m : run_2.Run_result_map_filtered)
   {
     if (
-      (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR))
-      && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED))
-    )
+        (m.second.count(UnsafeDropState::DF_ERROR) || m.second.count(UnsafeDropState::UAF_ERROR)) && (m.second.count(UnsafeDropState::RAW_REFERENCED) || m.second.count(UnsafeDropState::RAW_WRAPPED)))
     {
       llvm::outs() << *m.first << " ==> " << m.second << "\n";
     }
   }
-
 
   llvm::outs() << "\n\n###########\n\nCombined results:\n\n";
   llvm::outs() << "(skipped)\n";
