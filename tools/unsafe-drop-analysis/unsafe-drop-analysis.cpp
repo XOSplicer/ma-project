@@ -45,6 +45,51 @@ void print_leaks(psr::XTaint::LeakMap_t &leaks)
   llvm::outs() << "\n";
 }
 
+void find_double_leaks(psr::XTaint::LeakMap_t &leaks)
+{
+  // check for a value that is leaked twice
+  PHASAR_LOG_LEVEL(INFO, "Checking for double leak of values:\n");
+
+  auto leaked_values = llvm::DenseSet<const llvm::Value *>();
+  for (const auto leak : leaks)
+  {
+    for (const auto value : leak.second)
+    {
+      leaked_values.insert(value);
+    }
+  }
+
+  auto leaks_per_value = llvm::DenseMap<const llvm::Value *, llvm::SmallSet<const llvm::Instruction *, 2U>>();
+  for (const auto value : leaked_values)
+  {
+    auto instructions = llvm::SmallSet<const llvm::Instruction *, 2U>();
+    for (auto const leak : leaks)
+    {
+      if (leak.second.contains(value))
+      {
+        instructions.insert(leak.first);
+      }
+    }
+    leaks_per_value.insert(std::make_pair(value, instructions));
+  }
+
+  for (const auto value_instrs : leaks_per_value)
+  {
+    if (value_instrs.second.size() >= 2)
+    {
+      llvm::outs() << "Value: " << *value_instrs.first << "\n"
+                   << "is leaked multiple times by instructions: \n";
+      for (auto const instr : value_instrs.second)
+      {
+        llvm::outs() << " -> " << *instr << " ( Opcode = " << instr->getOpcodeName() << " ) \n";
+        if (auto const *cb = llvm::dyn_cast<llvm::CallBase>(instr))
+          llvm::outs() << *cb << " => called function: " << cb->getCalledFunction()->getName() << "\n";
+      }
+      llvm::outs() << "\n";
+    }
+  }
+}
+
 int main(int argc, const char **argv)
 {
   using namespace std::string_literals;
@@ -88,11 +133,10 @@ int main(int argc, const char **argv)
           .ReturnCat = TaintCategory::Source,
       });
   taint_config_data.Functions.push_back(
-    FunctionData{
-      .Name = "__rust_dealloc",
-      .HasAllSinkParam = true,
-    }
-  );
+      FunctionData{
+          .Name = "__rust_dealloc",
+          .HasAllSinkParam = true,
+      });
 
   // set all drop implementations as sinks
   for (const llvm::Function *const f : HA.getICFG().getAllFunctions())
@@ -130,6 +174,7 @@ int main(int argc, const char **argv)
                << ifds_taint_leaks.size()
                << " leaks found using IFDS Taint:\n";
   print_leaks(ifds_taint_leaks);
+  find_double_leaks(ifds_taint_leaks);
 
   PHASAR_LOG_LEVEL(INFO, "Testing IDE extended taint analysis with unsafe functions as source:");
 
@@ -146,48 +191,7 @@ int main(int argc, const char **argv)
                << ide_xtaint_leaks.size()
                << " leaks found using IDE XTaint:\n";
   print_leaks(ide_xtaint_leaks);
-
-  // check for a value that is leaked twice
-  PHASAR_LOG_LEVEL(INFO, "Checking for double leak of values:\n");
-
-  auto leaked_values = llvm::DenseSet<const llvm::Value *>();
-  for (const auto leak : ide_xtaint_leaks)
-  {
-    for (const auto value : leak.second)
-    {
-      leaked_values.insert(value);
-    }
-  }
-
-  auto leaks_per_value = llvm::DenseMap<const llvm::Value *, llvm::SmallSet<const llvm::Instruction *, 2U>>();
-  for (const auto value : leaked_values)
-  {
-    auto instructions = llvm::SmallSet<const llvm::Instruction *, 2U>();
-    for (auto const leak : ide_xtaint_leaks)
-    {
-      if (leak.second.contains(value))
-      {
-        instructions.insert(leak.first);
-      }
-    }
-    leaks_per_value.insert(std::make_pair(value, instructions));
-  }
-
-  for (const auto value_instrs : leaks_per_value)
-  {
-    if (value_instrs.second.size() >= 2)
-    {
-      llvm::outs() << "Value: " << *value_instrs.first << "\n"
-                   << "is leaked multiple times by instructions: \n";
-      for (auto const instr : value_instrs.second)
-      {
-        llvm::outs() << " -> " << *instr << " ( Opcode = " << instr->getOpcodeName() << " ) \n";
-        if (auto const *cb = llvm::dyn_cast<llvm::CallBase>(instr))
-          llvm::outs() << *cb << " => called function: " << cb->getCalledFunction()->getName() << "\n";
-      }
-      llvm::outs() << "\n";
-    }
-  }
+  find_double_leaks(ide_xtaint_leaks);
 
   return 0;
 }
