@@ -81,10 +81,6 @@ path = "src/uaf-vec-02.rs"
 name = "unsafe-tests_drop-uninit-02"
 path = "src/drop-uninit-02.rs"
 
-[[bin]]
-name = "unsafe-tests_unsafe-ffi-01"
-path = "src/unsafe-ffi-01.rs"
-
 [dependencies]
 
 [profile.dev]
