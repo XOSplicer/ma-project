@@ -285,6 +285,8 @@ namespace psr
         auto fn = this->HA.getProjectIRDB().getFunction(F);
         if (!fn)
         {
+
+            // FIXME: should this be USE or STAR, not using STAR and using USE instead might give better results
             PHASAR_LOG_LEVEL(DEBUG, "warning: getFnInfo: lookup of function failed, falling back to STAR Token, F=" << F);
             return FnInfo{
                 .is_factory_fn = false,

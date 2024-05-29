@@ -157,6 +157,35 @@ int main(int argc, const char **argv)
           .Name = "sink",
           .HasAllSinkParam = true,
       });
+  taint_config_data.Functions.push_back(
+      FunctionData{
+          .Name = "__rust_alloc",
+          .ReturnCat = TaintCategory::Source,
+      });
+  taint_config_data.Functions.push_back(
+      FunctionData{
+          .Name = "__rust_alloc_zeroed",
+          .ReturnCat = TaintCategory::Source,
+      });
+  // set all drop implementations as sinks
+  for (const llvm::Function *const f : HA.getICFG().getAllFunctions())
+  {
+    const llvm::DISubprogram *const sub = f->getSubprogram();
+    if (!sub)
+    {
+      continue;
+    }
+    auto name = sub->getName().split("<").first;
+    if (name.contains("drop"))
+    {
+      PHASAR_LOG_LEVEL(INFO, "drop implementation found (w/o <...>): " << name);
+      taint_config_data.Functions.push_back(
+          FunctionData{
+              .Name = sub->getLinkageName().str(),
+              .HasAllSinkParam = true,
+          });
+    }
+  }
 
   LLVMTaintConfig taint_config(HA.getProjectIRDB(), taint_config_data);
   llvm::outs() << "taint config:\n"
@@ -190,6 +219,48 @@ int main(int argc, const char **argv)
                << ide_xtaint_leaks.size()
                << " leaks found using IDE XTaint:\n";
   print_leaks(ide_xtaint_leaks);
+
+  // check for a value that is leaked twice
+  PHASAR_LOG_LEVEL(INFO, "Checking for double leak of values:\n");
+
+  auto leaked_values = llvm::DenseSet<const llvm::Value *>();
+  for (const auto leak : ide_xtaint_leaks)
+  {
+    for (const auto value : leak.second)
+    {
+      leaked_values.insert(value);
+    }
+  }
+
+  auto leaks_per_value = llvm::DenseMap<const llvm::Value *, llvm::SmallSet<const llvm::Instruction *, 2U>>();
+  for (const auto value : leaked_values)
+  {
+    auto instructions = llvm::SmallSet<const llvm::Instruction *, 2U>();
+    for (auto const leak : ide_xtaint_leaks)
+    {
+      if (leak.second.contains(value))
+      {
+        instructions.insert(leak.first);
+      }
+    }
+    leaks_per_value.insert(std::make_pair(value, instructions));
+  }
+
+  for (const auto value_instrs : leaks_per_value)
+  {
+    if (value_instrs.second.size() >= 2)
+    {
+      llvm::outs() << "Value: " << *value_instrs.first << "\n"
+                   << "is leaked multiple times by instructions: \n";
+      for (auto const instr : value_instrs.second)
+      {
+        llvm::outs() << " -> " << *instr << " ( Opcode = " << instr->getOpcodeName() << " ) \n";
+        if (auto const *cb = llvm::dyn_cast<llvm::CallBase>(instr))
+          llvm::outs() << *cb << " => called function: " << cb->getCalledFunction()->getName() << "\n";
+      }
+      llvm::outs() << "\n";
+    }
+  }
 
   return 0;
 }
